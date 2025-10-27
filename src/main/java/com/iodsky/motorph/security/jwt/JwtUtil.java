@@ -1,4 +1,4 @@
-package com.iodsky.motorph.security.Jwt;
+package com.iodsky.motorph.security.jwt;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;

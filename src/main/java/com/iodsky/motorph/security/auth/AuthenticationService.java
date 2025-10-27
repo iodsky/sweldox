@@ -1,6 +1,6 @@
 package com.iodsky.motorph.security.auth;
 
-import com.iodsky.motorph.security.Jwt.JwtUtil;
+import com.iodsky.motorph.security.jwt.JwtUtil;
 import com.iodsky.motorph.security.user.User;
 import com.iodsky.motorph.security.user.UserRepository;
 import lombok.RequiredArgsConstructor;
