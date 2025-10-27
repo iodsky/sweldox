@@ -7,6 +7,8 @@ import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -22,6 +24,7 @@ public class EmployeeController {
     private final EmployeeService employeeService;
     private final EmployeeMapper employeeMapper;
 
+    @PreAuthorize("hasRole('HR')")
     @PostMapping
     public ResponseEntity<EmployeeDto> createEmployee(@Valid @RequestBody EmployeeRequest request) {
         Employee employee = employeeService.createEmployee(request);
@@ -29,6 +32,7 @@ public class EmployeeController {
         return new ResponseEntity<>(dto, HttpStatus.CREATED);
     }
 
+    @PreAuthorize("hasAnyRole('HR', 'IT', 'PAYROLL')")
     @GetMapping
     public ResponseEntity<List<EmployeeDto>> getAllEmployees(
             @RequestParam(required = false) String departmentId,
@@ -42,6 +46,14 @@ public class EmployeeController {
         return ResponseEntity.ok(employees);
     }
 
+    @GetMapping("/me")
+    public ResponseEntity<EmployeeDto> getAuthenticatedEmployee() {
+        Employee employee = employeeService.getAuthenticatedEmployee();
+        EmployeeDto dto = employeeMapper.toDto(employee);
+        return ResponseEntity.ok(dto);
+    }
+
+    @PreAuthorize("hasRole('HR')")
     @GetMapping("/{id}")
     public ResponseEntity<EmployeeDto> getEmployeeById(@PathVariable long id) {
         Employee employee = employeeService.getEmployeeById(id);
@@ -49,6 +61,7 @@ public class EmployeeController {
         return ResponseEntity.ok(dto);
     }
 
+    @PreAuthorize("hasRole('HR')")
     @PutMapping("/{id}")
     public ResponseEntity<EmployeeDto> updateEmployee(@PathVariable long id, @Valid @RequestBody EmployeeRequest request) {
         Employee employee = employeeService.updateEmployeeById(id, request);
@@ -56,6 +69,7 @@ public class EmployeeController {
         return ResponseEntity.ok(dto);
     }
 
+    @PreAuthorize("hasRole('HR')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Map<String, String>> deleteEmployee(@PathVariable long id) {
         employeeService.deleteEmployeeById(id);

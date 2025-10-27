@@ -8,8 +8,10 @@ import com.iodsky.motorph.organization.Department;
 import com.iodsky.motorph.organization.DepartmentService;
 import com.iodsky.motorph.organization.Position;
 import com.iodsky.motorph.organization.PositionService;
+import com.iodsky.motorph.security.user.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -61,6 +63,16 @@ public class EmployeeService {
         }
 
         return employeeRepository.findAll();
+    }
+
+    public Employee getAuthenticatedEmployee() {
+        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+
+        if (principal instanceof User user) {
+            return user.getEmployee();
+        }
+
+        throw new NotFoundException("Authenticated user not found");
     }
 
     public Employee getEmployeeById(Long id) {
