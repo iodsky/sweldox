@@ -43,7 +43,12 @@ public class EmployeeService {
 
             return employeeRepository.save(employee);
         } catch (DataIntegrityViolationException e) {
-            String msg = e.getRootCause().getMessage();
+            String msg = null;
+
+            if (e.getRootCause() != null) {
+                msg = e.getRootCause().getMessage();
+            }
+
             if (msg != null && msg.contains("Key (")) {
                 msg = msg.split("[()]")[1];
                 throw new DuplicateFieldException("Duplicate value for field '" + msg + "'");
