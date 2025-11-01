@@ -194,11 +194,14 @@ class AttendanceServiceTest {
                     .timeOut(LocalTime.MIN)
                     .build();
 
+            LocalTime earlierTime = existing.getTimeIn().minusHours(1);
+
             when(attendanceRepository.findById(any(UUID.class))).thenReturn(Optional.of(existing));
-            // simulate timeIn > timeOut
+
             try (MockedStatic<LocalTime> mocked = mockStatic(LocalTime.class)) {
-                mocked.when(LocalTime::now).thenReturn(existing.getTimeIn().minusHours(1));
-                assertThrows(BadRequestException.class, () -> attendanceService.updateAttendance(existing.getId(), null));
+                mocked.when(LocalTime::now).thenReturn(earlierTime);
+                assertThrows(BadRequestException.class,
+                        () -> attendanceService.updateAttendance(existing.getId(), null));
             }
         }
 
