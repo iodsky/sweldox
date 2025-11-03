@@ -24,15 +24,15 @@ public class GovernmentId {
     @JoinColumn(name = "employee_id")
     private Employee employee;
 
-    @Column(name = "sss_no")
+    @Column(name = "sss_no", unique = true)
     private String sssNumber;
 
-    @Column(name = "tin_no")
+    @Column(name = "tin_no", unique = true)
     private String tinNumber;
 
-    @Column(name = "philhealth_no")
+    @Column(name = "philhealth_no", unique = true)
     private String philhealthNumber;
 
-    @Column(name = "pagibig_no")
+    @Column(name = "pagibig_no", unique = true)
     private String pagIbigNumber;
 }
