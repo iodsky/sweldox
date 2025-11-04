@@ -8,14 +8,12 @@ import com.iodsky.motorph.employee.request.EmployeeRequest;
 import com.iodsky.motorph.payroll.BenefitDto;
 import com.iodsky.motorph.payroll.BenefitMapper;
 import com.iodsky.motorph.payroll.model.Benefit;
-import com.iodsky.motorph.payroll.model.BenefitType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
@@ -89,12 +87,10 @@ public class EmployeeMapper {
 
         List<Benefit> benefits = request.getCompensation().getBenefits()
                         .stream()
-                        .map(b -> Benefit.builder()
-                                .compensation(compensation)
-                                .benefitType(BenefitType.builder().id(b.getBenefit()).build())
-                                .amount(b.getAmount())
-                                .build())
-                        .collect(Collectors.toList());
+                        .map(benefitMapper::toEntity)
+                        .toList();
+
+        benefits.forEach(b -> b.setCompensation(compensation));
         compensation.setBenefits(benefits);
 
         employee.setGovernmentId(governmentId);
@@ -148,12 +144,9 @@ public class EmployeeMapper {
         comp.setHourlyRate(hourlyRate);
 
         List<Benefit> benefits = request.getCompensation().getBenefits().stream()
-                .map(b -> Benefit.builder()
-                        .compensation(comp)
-                        .benefitType(BenefitType.builder().id(b.getBenefit()).build())
-                        .amount(b.getAmount())
-                        .build())
+                .map(benefitMapper::toEntity)
                 .toList();
+        benefits.forEach(b -> b.setCompensation(comp));
         comp.getBenefits().clear();
         comp.getBenefits().addAll(benefits);
     }

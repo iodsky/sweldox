@@ -8,6 +8,8 @@ import com.iodsky.motorph.organization.Department;
 import com.iodsky.motorph.organization.DepartmentService;
 import com.iodsky.motorph.organization.Position;
 import com.iodsky.motorph.organization.PositionService;
+import com.iodsky.motorph.payroll.BenefitService;
+import com.iodsky.motorph.payroll.model.Benefit;
 import com.iodsky.motorph.security.user.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -24,6 +26,7 @@ public class EmployeeService {
     private final EmployeeRepository employeeRepository;
     private final DepartmentService departmentService;
     private final PositionService positionService;
+    private final BenefitService benefitService;
 
     public Employee createEmployee(EmployeeRequest request) {
         try {
@@ -40,6 +43,11 @@ public class EmployeeService {
             employee.getEmploymentDetails().setSupervisor(supervisor);
             employee.getEmploymentDetails().setDepartment(department);
             employee.getEmploymentDetails().setPosition(position);
+
+            List<Benefit> benefits = employee.getCompensation().getBenefits();
+            benefits.forEach(b -> {
+                b.setBenefitType(benefitService.getBenefitTypeById(b.getBenefitType().getId()));
+            });
 
             return employeeRepository.save(employee);
         } catch (DataIntegrityViolationException e) {
