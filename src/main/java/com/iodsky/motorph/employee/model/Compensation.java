@@ -36,7 +36,7 @@ public class Compensation {
     @Column(name = "semi_monthly_rate")
     private BigDecimal semiMonthlyRate;
 
-    @OneToMany(mappedBy = "compensation", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "compensation", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     private List<Benefit> benefits;
 
 }
