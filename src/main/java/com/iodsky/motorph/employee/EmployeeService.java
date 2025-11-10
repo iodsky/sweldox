@@ -128,4 +128,8 @@ public class EmployeeService {
         });
     }
 
+    public List<Long> getAllActiveEmployeeIds() {
+        return employeeRepository.findAllActiveEmployeeIds();
+    }
+
 }
