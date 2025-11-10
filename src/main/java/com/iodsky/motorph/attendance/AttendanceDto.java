@@ -6,6 +6,7 @@ import jakarta.validation.constraints.PastOrPresent;
 import lombok.Builder;
 import lombok.Data;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.UUID;
@@ -26,7 +27,7 @@ public class AttendanceDto {
 
     private LocalTime timeOut;
 
-    private double totalHours;
+    private BigDecimal totalHours;
 
-    private double overtimeHours;
+    private BigDecimal overtimeHours;
 }

@@ -4,6 +4,7 @@ import com.iodsky.motorph.employee.model.Employee;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.UUID;
@@ -34,9 +35,9 @@ public class Attendance {
     private LocalTime timeOut;
 
     @Column(name = "total_hours")
-    private Double totalHours;
+    private BigDecimal totalHours;
 
-    private Double overtime;
+    private BigDecimal overtime;
 
 }
 

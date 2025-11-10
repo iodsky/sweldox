@@ -14,6 +14,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 
+import java.math.BigDecimal;
 import java.time.*;
 import java.util.*;
 
@@ -66,8 +67,8 @@ class AttendanceServiceTest {
                 .date(TODAY)
                 .timeIn(SHIFT_START)
                 .timeOut(LocalTime.MIN)
-                .totalHours(0.0)
-                .overtime(0.0)
+                .totalHours(BigDecimal.ZERO)
+                .overtime(BigDecimal.ZERO)
                 .build();
 
         SecurityContextHolder.clearContext();

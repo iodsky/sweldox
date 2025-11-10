@@ -1,5 +1,7 @@
 package com.iodsky.motorph.attendance;
 
+import com.iodsky.motorph.common.DateRange;
+import com.iodsky.motorph.common.DateRangeResolver;
 import com.iodsky.motorph.common.exception.*;
 import com.iodsky.motorph.employee.EmployeeService;
 import com.iodsky.motorph.employee.model.Employee;
@@ -8,6 +10,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -25,6 +29,7 @@ public class AttendanceService {
 
     private final AttendanceRepository attendanceRepository;
     private final EmployeeService employeeService;
+    private final DateRangeResolver dateRangeResolver;
 
     public Attendance createAttendance(AttendanceDto attendanceDto) {
         Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
@@ -82,8 +87,8 @@ public class AttendanceService {
                 .date(attendanceDate)
                 .timeIn(clockInTime)
                 .timeOut(LocalTime.MIN)
-                .totalHours(0.0)
-                .overtime(0.0)
+                .totalHours(BigDecimal.ZERO)
+                .overtime(BigDecimal.ZERO)
                 .build();
 
         return attendanceRepository.save(attendance);
@@ -141,10 +146,16 @@ public class AttendanceService {
 
         if (attendance.getTimeIn() != null && attendance.getTimeOut() != null && !attendance.getTimeOut().equals(LocalTime.MIN)) {
             Duration duration = Duration.between(attendance.getTimeIn(), attendance.getTimeOut());
-            double totalHours = duration.toMinutes() / 60.0;
+            BigDecimal totalHours = BigDecimal.valueOf(duration.toMinutes()).divide(BigDecimal.valueOf(60), 2, RoundingMode.HALF_UP);
 
-            double regularHours = Duration.between(START_SHIFT, END_SHIFT).toMinutes() / 60.0;
-            double overtime = Math.max(totalHours - regularHours, 0);
+            BigDecimal regularHours = BigDecimal
+                    .valueOf(Duration.between(START_SHIFT, END_SHIFT).toMinutes())
+                    .divide(BigDecimal.valueOf(60), 2, RoundingMode.HALF_UP);
+
+            BigDecimal overtime = totalHours.subtract(regularHours);
+            if (overtime.compareTo(BigDecimal.ZERO) < 0) {
+                overtime = BigDecimal.ZERO;
+            }
 
             attendance.setTotalHours(totalHours);
             attendance.setOvertime(overtime);
@@ -158,7 +169,7 @@ public class AttendanceService {
             return attendanceRepository.findAllByDate(startDate);
         }
 
-        DateRange dateRange = resolveDateRange(startDate, endDate);
+        DateRange dateRange = dateRangeResolver.resolve(startDate, endDate);
 
         return attendanceRepository.findAllByDateBetween(dateRange.startDate(), dateRange.endDate());
     }
@@ -170,32 +181,21 @@ public class AttendanceService {
             throw new UnauthorizedException("Authentication required to access this resource");
         }
 
-        boolean isHr = "HR".equalsIgnoreCase(user.getUserRole().getRole());
+        String role = user.getUserRole().getRole();
+        boolean isAdmin = role.equalsIgnoreCase("HR") || role.equalsIgnoreCase("PAYROLL");
         Long currentEmployeeId = user.getEmployee().getId();
 
         if (employeeId == null) {
             employeeId = currentEmployeeId;
         }
 
-        if (!isHr && !employeeId.equals(currentEmployeeId)) {
+        if (!isAdmin && !employeeId.equals(currentEmployeeId)) {
             throw new ForbiddenException("You don't have permission to access this resource");
         }
 
-        DateRange dateRange = resolveDateRange(startDate, endDate);
+        DateRange dateRange = dateRangeResolver.resolve(startDate, endDate);
 
-        return attendanceRepository.findByEmployee_IdAndDateBetween(employeeId, dateRange.startDate, dateRange.endDate);
+        return attendanceRepository.findByEmployee_IdAndDateBetween(employeeId, dateRange.startDate(), dateRange.endDate());
     }
 
-    private DateRange resolveDateRange(LocalDate startDate, LocalDate endDate) {
-        if (startDate == null) startDate = LocalDate.now();
-        if (endDate == null) endDate = startDate.plusDays(15);
-        if (startDate.isAfter(endDate)) {
-            LocalDate temp = startDate;
-            startDate = endDate;
-            endDate = temp;
-        }
-        return new DateRange(startDate, endDate);
-    }
-
-    private record DateRange(LocalDate startDate, LocalDate endDate) { }
 }
