@@ -1,5 +1,6 @@
 package com.iodsky.motorph.payroll;
 
+import com.iodsky.motorph.payroll.model.Benefit;
 import com.iodsky.motorph.payroll.model.Deduction;
 import com.iodsky.motorph.payroll.model.Payroll;
 import org.springframework.stereotype.Component;
@@ -23,6 +24,9 @@ public class PayrollMapper {
                 .monthlyRate(payroll.getMonthlyRate())
                 .dailyRate(payroll.getDailyRate())
                 .grossPay(payroll.getGrossPay())
+                .mealAllowance(getBenefitAmount(payroll, "MEAL"))
+                .phoneAllowance(getBenefitAmount(payroll, "PHONE"))
+                .clothingAllowance(getBenefitAmount(payroll, "CLOTHING"))
                 .totalBenefits(payroll.getTotalBenefits())
                 .sssDeduction(getDeductionAmount(payroll, "SSS"))
                 .philhealthDeduction(getDeductionAmount(payroll, "PHIC"))
@@ -37,6 +41,14 @@ public class PayrollMapper {
         return payroll.getDeductions().stream()
                 .filter(d -> d.getDeductionType().getCode().equalsIgnoreCase(type))
                 .map(Deduction::getAmount)
+                .findFirst()
+                .orElse(BigDecimal.ZERO);
+    }
+
+    private BigDecimal getBenefitAmount(Payroll payroll, String type) {
+        return payroll.getEmployee().getCompensation().getBenefits().stream()
+                .filter(d -> d.getBenefitType().getId().equalsIgnoreCase(type))
+                .map(Benefit::getAmount)
                 .findFirst()
                 .orElse(BigDecimal.ZERO);
     }
