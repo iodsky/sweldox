@@ -4,6 +4,7 @@ import com.iodsky.motorph.attendance.Attendance;
 import com.iodsky.motorph.attendance.AttendanceService;
 import com.iodsky.motorph.common.DateRange;
 import com.iodsky.motorph.common.DateRangeResolver;
+import com.iodsky.motorph.common.exception.ConflictException;
 import com.iodsky.motorph.common.exception.ForbiddenException;
 import com.iodsky.motorph.common.exception.NotFoundException;
 import com.iodsky.motorph.common.exception.UnauthorizedException;
@@ -14,6 +15,9 @@ import com.iodsky.motorph.payroll.model.Deduction;
 import com.iodsky.motorph.payroll.model.Payroll;
 import com.iodsky.motorph.security.user.User;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.cglib.core.Local;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
@@ -25,6 +29,8 @@ import java.util.*;
 @Service
 @RequiredArgsConstructor
 public class PayrollService {
+
+    private static final Logger log = LoggerFactory.getLogger(PayrollService.class);
 
     // Philhealth constants
     private static final BigDecimal PHILHEALTH_RATE = BigDecimal.valueOf(0.03);
@@ -56,8 +62,48 @@ public class PayrollService {
     private final AttendanceService attendanceService;
     private final DeductionTypeRepository deductionTypeRepository;
     private final DateRangeResolver dateRangeResolver;
+    
 
-    public Payroll createPayroll(Long employeeId, LocalDate periodStartDate, LocalDate periodEndDate, LocalDate payDate) {
+    public Payroll createPayrollSingle(Long employeeId, LocalDate periodStartDate, LocalDate periodEndDate, LocalDate payDate) {
+
+        if (payrollExistsForEmployeeAndPeriod(employeeId, periodStartDate, periodEndDate)) {
+            log.warn(
+                    "Payroll already exists for employee {} for period {} to {}. Skipping...",
+                    employeeId, periodStartDate, periodEndDate
+            );
+            throw new ConflictException(
+                    String.format(
+                        "Payroll already exists for employee %s for period %s to %s.",
+                        employeeId, periodStartDate, periodEndDate
+                    )
+            );
+        }
+
+        return createPayroll(employeeId, periodStartDate, periodEndDate, payDate);
+    }
+
+    public Integer createPayrollBatch(LocalDate periodStartDate, LocalDate periodEndDate, LocalDate payDate) {
+
+        List<Long> ids = employeeService.getAllActiveEmployeeIds();
+        int created = 0;
+
+        for (Long id : ids) {
+            if (payrollExistsForEmployeeAndPeriod(id, periodStartDate, periodEndDate)) {
+                log.warn("Skipping existing payroll for employee {}", id);
+                continue;
+            }
+            try {
+                createPayroll(id, periodStartDate, periodEndDate, payDate);
+                created++;
+            } catch (Exception ex) {
+                log.error("Failed to process payroll for employee {}. Reason: {}", id, ex.getMessage());
+            }
+        }
+
+        return created;
+    }
+
+    private Payroll createPayroll(Long employeeId, LocalDate periodStartDate, LocalDate periodEndDate, LocalDate payDate) {
 
         // Calculate hours worked within the period
         Employee employee = employeeService.getEmployeeById(employeeId);
@@ -188,6 +234,10 @@ public class PayrollService {
         deductionList.forEach(d -> d.setPayroll(payroll));
 
         return payrollRepository.save(payroll);
+    }
+
+    private Boolean payrollExistsForEmployeeAndPeriod(Long employeeId, LocalDate startDate, LocalDate endDate) {
+        return payrollRepository.existsByEmployee_IdAndPeriodStartDateAndPeriodEndDate(employeeId, startDate, endDate);
     }
 
     public Payroll getPayrollById(UUID payrollId) {

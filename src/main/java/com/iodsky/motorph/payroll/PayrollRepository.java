@@ -14,4 +14,6 @@ public interface PayrollRepository extends JpaRepository<Payroll, UUID> {
     List<Payroll> findAllByPeriodStartDateBetween(LocalDate startDate, LocalDate endDate);
 
     List<Payroll> findAllByEmployee_IdAndPeriodStartDateBetween(Long employeeId, LocalDate startDate, LocalDate endDate);
+
+    boolean existsByEmployee_IdAndPeriodStartDateAndPeriodEndDate(Long employeeId, LocalDate startDate, LocalDate endDate);
 }

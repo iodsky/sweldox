@@ -5,7 +5,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -24,12 +23,23 @@ public class PayrollController {
     @PostMapping
     public ResponseEntity<PayrollDto> createPayroll(
             @RequestBody PayrollRequest request)  {
-        Payroll payroll = payrollService.createPayroll(
+        Payroll payroll = payrollService.createPayrollSingle(
                 request.getEmployeeId(),
                 request.getPeriodStartDate(),
                 request.getPeriodEndDate(),
                 request.getPayDate());
         return new ResponseEntity<>(payrollMapper.toDto(payroll), HttpStatus.CREATED);
+    }
+
+    @PreAuthorize("hasRole('PAYROLL')")
+    @PostMapping("/batch")
+    public ResponseEntity<Integer> batchCreatePayroll(
+            @RequestBody PayrollRequest request)  {
+        Integer count = payrollService.createPayrollBatch(
+                request.getPeriodStartDate(),
+                request.getPeriodEndDate(),
+                request.getPayDate());
+        return new ResponseEntity<>(count, HttpStatus.CREATED);
     }
 
     @PreAuthorize("hasRole('PAYROLL')")
