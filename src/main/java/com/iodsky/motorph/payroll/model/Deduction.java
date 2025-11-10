@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.util.UUID;
 
 @Entity
@@ -28,7 +29,7 @@ public class Deduction {
     @JoinColumn(name = "deduction_code")
     private DeductionType deductionType;
 
-    private Double amount;
+    private BigDecimal amount;
 
 
 }

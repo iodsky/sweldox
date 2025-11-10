@@ -10,6 +10,7 @@ import lombok.NoArgsConstructor;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.UUID;
 
 @Entity
 @Table(name = "payroll")
@@ -20,7 +21,8 @@ import java.util.List;
 public class Payroll {
 
     @Id
-    private String id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
 
     @ManyToOne
     @JoinColumn(name = "employee_id")
@@ -41,7 +43,7 @@ public class Payroll {
     @Column(name = "days_worked")
     private int daysWorked;
 
-    private double overtime;
+    private BigDecimal overtime;
 
     @Column(name = "monthly_rate")
     private BigDecimal monthlyRate;
