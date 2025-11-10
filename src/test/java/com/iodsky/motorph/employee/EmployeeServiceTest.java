@@ -2,6 +2,7 @@ package com.iodsky.motorph.employee;
 
 import com.iodsky.motorph.common.exception.DuplicateFieldException;
 import com.iodsky.motorph.common.exception.NotFoundException;
+import com.iodsky.motorph.employee.model.Compensation;
 import com.iodsky.motorph.employee.model.Employee;
 import com.iodsky.motorph.employee.model.EmploymentDetails;
 import com.iodsky.motorph.employee.request.EmployeeRequest;
@@ -23,6 +24,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -55,6 +57,10 @@ class EmployeeServiceTest {
         employee = new Employee();
         EmploymentDetails details = new EmploymentDetails();
         employee.setEmploymentDetails(details);
+
+        Compensation compensation = new Compensation();
+        compensation.setBenefits(new ArrayList<>());
+        employee.setCompensation(compensation);
 
         request = new EmployeeRequest();
         EmploymentDetailsRequest reqDetails = new EmploymentDetailsRequest();

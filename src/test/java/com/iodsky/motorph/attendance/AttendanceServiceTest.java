@@ -1,5 +1,7 @@
 package com.iodsky.motorph.attendance;
 
+import com.iodsky.motorph.common.DateRange;
+import com.iodsky.motorph.common.DateRangeResolver;
 import com.iodsky.motorph.common.exception.*;
 import com.iodsky.motorph.employee.EmployeeService;
 import com.iodsky.motorph.employee.model.Employee;
@@ -26,6 +28,7 @@ class AttendanceServiceTest {
 
     @Mock private AttendanceRepository attendanceRepository;
     @Mock private EmployeeService employeeService;
+    @Mock private DateRangeResolver dateRangeResolver;
     @InjectMocks private AttendanceService attendanceService;
 
     private User hrUser;
@@ -268,6 +271,8 @@ class AttendanceServiceTest {
 
         @Test
         void shouldReturnAttendancesForDateRange() {
+            when(dateRangeResolver.resolve(any(), any()))
+                    .thenReturn(new DateRange(TODAY, TODAY.plusDays(2)));
             when(attendanceRepository.findAllByDateBetween(any(), any())).thenReturn(List.of(attendance));
 
             List<Attendance> result = attendanceService.getAllAttendances(TODAY, TODAY.plusDays(2));
@@ -277,6 +282,9 @@ class AttendanceServiceTest {
 
         @Test
         void shouldHandleSwappedDates() {
+            when(dateRangeResolver.resolve(any(), any()))
+                    .thenReturn(new DateRange(TODAY, TODAY.plusDays(2)));
+
             when(attendanceRepository.findAllByDateBetween(any(), any())).thenReturn(List.of(attendance));
 
             List<Attendance> result = attendanceService.getAllAttendances(TODAY.plusDays(2), TODAY);
@@ -293,6 +301,8 @@ class AttendanceServiceTest {
             mockAuth(normalUser);
             when(attendanceRepository.findByEmployee_IdAndDateBetween(anyLong(), any(), any()))
                     .thenReturn(List.of(attendance));
+            when(dateRangeResolver.resolve(any(), any()))
+                    .thenReturn(new DateRange(TODAY, TODAY.plusDays(2)));
 
             List<Attendance> result = attendanceService.getEmployeeAttendances(null, TODAY, TODAY.plusDays(1));
 
@@ -304,6 +314,8 @@ class AttendanceServiceTest {
             mockAuth(hrUser);
             when(attendanceRepository.findByEmployee_IdAndDateBetween(anyLong(), any(), any()))
                     .thenReturn(List.of(attendance));
+            when(dateRangeResolver.resolve(any(), any()))
+                    .thenReturn(new DateRange(TODAY, TODAY.plusDays(2)));
 
             List<Attendance> result = attendanceService.getEmployeeAttendances(otherEmployee.getId(), TODAY, TODAY.plusDays(1));
 
