@@ -1,5 +1,6 @@
 package com.iodsky.motorph.attendance;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.iodsky.motorph.employee.model.Employee;
 import jakarta.persistence.*;
 import lombok.*;
@@ -12,7 +13,8 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "attendance")
-@Data
+@Getter
+@Setter
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
@@ -24,6 +26,7 @@ public class Attendance {
 
     @ManyToOne
     @JoinColumn(name = "employee_id")
+    @JsonIgnore
     private Employee employee;
 
     private LocalDate date;

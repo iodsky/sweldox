@@ -1,19 +1,18 @@
 package com.iodsky.motorph.employee.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.iodsky.motorph.employee.Status;
 import com.iodsky.motorph.organization.Department;
 import com.iodsky.motorph.organization.Position;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.util.UUID;
 
 @Entity
 @Table(name = "employee_details")
-@Data
+@Getter
+@Setter
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
@@ -25,6 +24,7 @@ public class EmploymentDetails {
 
     @OneToOne
     @JoinColumn(name = "employee_id")
+    @JsonIgnore
     private Employee employee;
 
     @ManyToOne

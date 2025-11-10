@@ -1,17 +1,17 @@
 package com.iodsky.motorph.payroll.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.math.BigDecimal;
 import java.util.UUID;
 
 @Entity
 @Table(name = "deduction")
-@Data
+@Getter
+@Setter
+@ToString(exclude = {"payroll"})
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
@@ -23,6 +23,7 @@ public class Deduction {
 
     @ManyToOne
     @JoinColumn(name = "payroll_id")
+    @JsonIgnore
     private Payroll payroll;
 
     @ManyToOne
