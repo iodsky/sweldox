@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -21,25 +22,23 @@ public class PayrollController {
 
     @PreAuthorize("hasRole('PAYROLL')")
     @PostMapping
-    public ResponseEntity<PayrollDto> createPayroll(
+    public ResponseEntity<?> createPayroll(
             @RequestBody PayrollRequest request)  {
+
+        if (request.getEmployeeId() == null) {
+            Integer created = payrollService.createPayrollBatch(
+                    request.getPeriodStartDate(),
+                    request.getPeriodEndDate(),
+                    request.getPayDate());
+            return new ResponseEntity<>(Map.of("recordsCreated", created), HttpStatus.CREATED);
+        }
+
         Payroll payroll = payrollService.createPayroll(
                 request.getEmployeeId(),
                 request.getPeriodStartDate(),
                 request.getPeriodEndDate(),
                 request.getPayDate());
         return new ResponseEntity<>(payrollMapper.toDto(payroll), HttpStatus.CREATED);
-    }
-
-    @PreAuthorize("hasRole('PAYROLL')")
-    @PostMapping("/batch")
-    public ResponseEntity<Integer> createPayrollBatch(
-            @RequestBody PayrollRequest request)  {
-        Integer count = payrollService.createPayrollBatch(
-                request.getPeriodStartDate(),
-                request.getPeriodEndDate(),
-                request.getPayDate());
-        return new ResponseEntity<>(count, HttpStatus.CREATED);
     }
 
     @PreAuthorize("hasRole('PAYROLL')")
