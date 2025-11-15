@@ -26,15 +26,29 @@ public class PayrollDto {
     private BigDecimal monthlyRate;
     private BigDecimal dailyRate;
     private BigDecimal grossPay;
+
+    private BenefitsDto benefits;
+    private DeductionsDto deductions;
+
+    private BigDecimal netPay;
+
+}
+
+@Data
+@Builder
+class BenefitsDto {
     private BigDecimal mealAllowance;
     private BigDecimal clothingAllowance;
     private BigDecimal phoneAllowance;
     private BigDecimal totalBenefits;
+}
+
+@Data
+@Builder
+class DeductionsDto {
     private BigDecimal sssDeduction;
     private BigDecimal philhealthDeduction;
     private BigDecimal pagibigDeduction;
     private BigDecimal withholdingTax;
     private BigDecimal totalDeductions;
-    private BigDecimal netPay;
-
 }
