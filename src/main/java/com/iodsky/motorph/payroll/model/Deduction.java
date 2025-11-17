@@ -11,7 +11,6 @@ import java.util.UUID;
 @Table(name = "deduction")
 @Getter
 @Setter
-@ToString(exclude = {"payroll"})
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
