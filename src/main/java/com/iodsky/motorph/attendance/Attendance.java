@@ -12,7 +12,12 @@ import java.util.UUID;
 
 
 @Entity
-@Table(name = "attendance")
+@Table(
+        name = "attendance",
+        uniqueConstraints = @UniqueConstraint(
+                columnNames = { "employee_id", "date" }
+        )
+)
 @Getter
 @Setter
 @AllArgsConstructor
