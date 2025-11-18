@@ -8,7 +8,6 @@ import com.iodsky.motorph.employee.model.Employee;
 import com.iodsky.motorph.security.user.User;
 import com.iodsky.motorph.security.user.UserRole;
 import org.junit.jupiter.api.*;
-import org.junit.jupiter.api.condition.DisabledIfEnvironmentVariable;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -157,7 +156,6 @@ class AttendanceServiceTest {
     @Nested
     class UpdateAttendanceTests {
         @Test
-        @DisabledIfEnvironmentVariable(named = "CI", matches = "true")
         void shouldAllowEmployeeToClockOutSuccessfully() {
             mockAuth(normalUser);
             Attendance existing = Attendance.builder()
@@ -168,13 +166,19 @@ class AttendanceServiceTest {
                     .timeOut(LocalTime.MIN)
                     .build();
 
+            LocalTime clockOutTime = SHIFT_START.plusHours(8);
+
             when(attendanceRepository.findById(any(UUID.class))).thenReturn(Optional.of(existing));
             when(attendanceRepository.save(any())).thenReturn(existing);
 
-            Attendance result = attendanceService.updateAttendance(existing.getId(), null);
+            try (MockedStatic<LocalTime> mocked = mockStatic(LocalTime.class, CALLS_REAL_METHODS)) {
+                mocked.when(LocalTime::now).thenReturn(clockOutTime);
+                Attendance result = attendanceService.updateAttendance(existing.getId(), null);
 
-            assertNotNull(result.getTimeOut());
-            verify(attendanceRepository).save(existing);
+                assertNotNull(result.getTimeOut());
+                assertEquals(clockOutTime, result.getTimeOut());
+                verify(attendanceRepository).save(existing);
+            }
         }
 
         @Test
@@ -208,7 +212,7 @@ class AttendanceServiceTest {
 
             when(attendanceRepository.findById(any(UUID.class))).thenReturn(Optional.of(existing));
 
-            try (MockedStatic<LocalTime> mocked = mockStatic(LocalTime.class)) {
+            try (MockedStatic<LocalTime> mocked = mockStatic(LocalTime.class, CALLS_REAL_METHODS)) {
                 mocked.when(LocalTime::now).thenReturn(earlierTime);
                 assertThrows(BadRequestException.class,
                         () -> attendanceService.updateAttendance(existing.getId(), null));

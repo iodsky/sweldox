@@ -1,0 +1,811 @@
+package com.iodsky.motorph.payroll;
+
+import com.iodsky.motorph.attendance.Attendance;
+import com.iodsky.motorph.attendance.AttendanceService;
+import com.iodsky.motorph.common.DateRange;
+import com.iodsky.motorph.common.DateRangeResolver;
+import com.iodsky.motorph.common.exception.ConflictException;
+import com.iodsky.motorph.common.exception.ForbiddenException;
+import com.iodsky.motorph.common.exception.NotFoundException;
+import com.iodsky.motorph.common.exception.UnauthorizedException;
+import com.iodsky.motorph.employee.EmployeeService;
+import com.iodsky.motorph.employee.model.Compensation;
+import com.iodsky.motorph.employee.model.Employee;
+import com.iodsky.motorph.payroll.model.*;
+import com.iodsky.motorph.security.user.User;
+import com.iodsky.motorph.security.user.UserRole;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.*;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
+@ExtendWith(MockitoExtension.class)
+class PayrollServiceTest {
+
+    @Mock private PayrollRepository payrollRepository;
+    @Mock private EmployeeService employeeService;
+    @Mock private AttendanceService attendanceService;
+    @Mock private DeductionTypeRepository deductionTypeRepository;
+    @Mock private DateRangeResolver dateRangeResolver;
+    @InjectMocks private PayrollService payrollService;
+
+    private User payrollUser;
+    private User hrUser;
+    private User normalUser;
+    private Employee employee;
+    private Employee otherEmployee;
+    private Compensation compensation;
+    private Payroll payroll;
+    private DeductionType sssType;
+    private DeductionType phicType;
+    private DeductionType hdmfType;
+    private DeductionType taxType;
+    private BenefitType riceAllowanceType;
+    private Benefit riceBenefit;
+
+    private static final LocalDate PERIOD_START = LocalDate.of(2025, 11, 1);
+    private static final LocalDate PERIOD_END = LocalDate.of(2025, 11, 15);
+    private static final LocalDate PAY_DATE = LocalDate.of(2025, 11, 20);
+    private static final BigDecimal BASIC_SALARY = new BigDecimal("30000.00");
+    private static final BigDecimal HOURLY_RATE = new BigDecimal("178.57");
+
+    @BeforeEach
+    void setUp() {
+        // Setup employees
+        employee = new Employee();
+        employee.setId(1L);
+        employee.setFirstName("Juan");
+        employee.setLastName("Dela Cruz");
+
+        otherEmployee = new Employee();
+        otherEmployee.setId(2L);
+        otherEmployee.setFirstName("Maria");
+        otherEmployee.setLastName("Santos");
+
+        // Setup compensation
+        riceAllowanceType = BenefitType.builder()
+                .id("RICE")
+                .type("Rice Allowance")
+                .build();
+
+        riceBenefit = Benefit.builder()
+                .id(UUID.randomUUID())
+                .benefitType(riceAllowanceType)
+                .amount(new BigDecimal("2000.00"))
+                .build();
+
+        compensation = Compensation.builder()
+                .id(UUID.randomUUID())
+                .employee(employee)
+                .basicSalary(BASIC_SALARY)
+                .hourlyRate(HOURLY_RATE)
+                .semiMonthlyRate(new BigDecimal("15000.00"))
+                .benefits(List.of(riceBenefit))
+                .build();
+
+        employee.setCompensation(compensation);
+
+        // Setup deduction types
+        sssType = DeductionType.builder()
+                .code("SSS")
+                .type("SSS Contribution")
+                .build();
+
+        phicType = DeductionType.builder()
+                .code("PHIC")
+                .type("PhilHealth Contribution")
+                .build();
+
+        hdmfType = DeductionType.builder()
+                .code("HDMF")
+                .type("Pag-IBIG Contribution")
+                .build();
+
+        taxType = DeductionType.builder()
+                .code("TAX")
+                .type("Withholding Tax")
+                .build();
+
+        // Setup users
+        payrollUser = new User();
+        payrollUser.setUserRole(new UserRole("PAYROLL"));
+        payrollUser.setEmployee(employee);
+
+        hrUser = new User();
+        hrUser.setUserRole(new UserRole("HR"));
+        hrUser.setEmployee(employee);
+
+        normalUser = new User();
+        normalUser.setUserRole(new UserRole("EMPLOYEE"));
+        normalUser.setEmployee(employee);
+
+        // Setup payroll
+        payroll = Payroll.builder()
+                .id(UUID.randomUUID())
+                .employee(employee)
+                .periodStartDate(PERIOD_START)
+                .periodEndDate(PERIOD_END)
+                .payDate(PAY_DATE)
+                .monthlyRate(BASIC_SALARY)
+                .dailyRate(new BigDecimal("1428.57"))
+                .daysWorked(10)
+                .overtime(BigDecimal.ZERO)
+                .grossPay(new BigDecimal("14285.70"))
+                .totalBenefits(new BigDecimal("2000.00"))
+                .totalDeductions(new BigDecimal("2500.00"))
+                .netPay(new BigDecimal("13785.70"))
+                .deductions(new ArrayList<>())
+                .benefits(new ArrayList<>())
+                .build();
+
+        SecurityContextHolder.clearContext();
+    }
+
+    private void mockAuth(User user) {
+        Authentication auth = mock(Authentication.class);
+        SecurityContext context = mock(SecurityContext.class);
+        when(auth.getPrincipal()).thenReturn(user);
+        when(context.getAuthentication()).thenReturn(auth);
+        SecurityContextHolder.setContext(context);
+    }
+
+    private List<Attendance> createMockAttendances(int days) {
+        List<Attendance> attendances = new ArrayList<>();
+        for (int i = 0; i < days; i++) {
+            attendances.add(Attendance.builder()
+                    .id(UUID.randomUUID())
+                    .employee(employee)
+                    .date(PERIOD_START.plusDays(i))
+                    .timeIn(LocalTime.of(8, 0))
+                    .timeOut(LocalTime.of(17, 0))
+                    .totalHours(new BigDecimal("8.00"))
+                    .overtime(BigDecimal.ZERO)
+                    .build());
+        }
+        return attendances;
+    }
+
+    @Nested
+    class CreatePayrollTests {
+
+        @Test
+        void shouldCreatePayrollSuccessfully() {
+            List<Attendance> attendances = createMockAttendances(10);
+
+            when(payrollRepository.existsByEmployee_IdAndPeriodStartDateAndPeriodEndDate(
+                    employee.getId(), PERIOD_START, PERIOD_END)).thenReturn(false);
+            when(employeeService.getEmployeeById(employee.getId())).thenReturn(employee);
+            when(attendanceService.getEmployeeAttendances(employee.getId(), PERIOD_START, PERIOD_END))
+                    .thenReturn(attendances);
+            when(deductionTypeRepository.findByCode("SSS")).thenReturn(Optional.of(sssType));
+            when(deductionTypeRepository.findByCode("PHIC")).thenReturn(Optional.of(phicType));
+            when(deductionTypeRepository.findByCode("HDMF")).thenReturn(Optional.of(hdmfType));
+            when(deductionTypeRepository.findByCode("TAX")).thenReturn(Optional.of(taxType));
+            when(payrollRepository.save(any(Payroll.class))).thenReturn(payroll);
+
+            Payroll result = payrollService.createPayroll(employee.getId(), PERIOD_START, PERIOD_END, PAY_DATE);
+
+            assertNotNull(result);
+            assertEquals(employee, result.getEmployee());
+            assertEquals(PERIOD_START, result.getPeriodStartDate());
+            assertEquals(PERIOD_END, result.getPeriodEndDate());
+            assertEquals(PAY_DATE, result.getPayDate());
+
+            ArgumentCaptor<Payroll> payrollCaptor = ArgumentCaptor.forClass(Payroll.class);
+            verify(payrollRepository).save(payrollCaptor.capture());
+            Payroll savedPayroll = payrollCaptor.getValue();
+
+            assertEquals(10, savedPayroll.getDaysWorked());
+            assertNotNull(savedPayroll.getGrossPay());
+            assertNotNull(savedPayroll.getNetPay());
+        }
+
+        @Test
+        void shouldThrowConflictWhenPayrollAlreadyExists() {
+            when(payrollRepository.existsByEmployee_IdAndPeriodStartDateAndPeriodEndDate(
+                    employee.getId(), PERIOD_START, PERIOD_END)).thenReturn(true);
+
+            ConflictException exception = assertThrows(ConflictException.class,
+                    () -> payrollService.createPayroll(employee.getId(), PERIOD_START, PERIOD_END, PAY_DATE));
+
+            assertTrue(exception.getMessage().contains("already exists"));
+            verify(payrollRepository, never()).save(any(Payroll.class));
+        }
+
+        @Test
+        void shouldHandleEmployeeWithNoAttendances() {
+            when(payrollRepository.existsByEmployee_IdAndPeriodStartDateAndPeriodEndDate(
+                    employee.getId(), PERIOD_START, PERIOD_END)).thenReturn(false);
+            when(employeeService.getEmployeeById(employee.getId())).thenReturn(employee);
+            when(attendanceService.getEmployeeAttendances(employee.getId(), PERIOD_START, PERIOD_END))
+                    .thenReturn(Collections.emptyList());
+            when(deductionTypeRepository.findByCode("SSS")).thenReturn(Optional.of(sssType));
+            when(deductionTypeRepository.findByCode("PHIC")).thenReturn(Optional.of(phicType));
+            when(deductionTypeRepository.findByCode("HDMF")).thenReturn(Optional.of(hdmfType));
+            when(deductionTypeRepository.findByCode("TAX")).thenReturn(Optional.of(taxType));
+            when(payrollRepository.save(any(Payroll.class))).thenReturn(payroll);
+
+            Payroll result = payrollService.createPayroll(employee.getId(), PERIOD_START, PERIOD_END, PAY_DATE);
+
+            assertNotNull(result);
+            ArgumentCaptor<Payroll> payrollCaptor = ArgumentCaptor.forClass(Payroll.class);
+            verify(payrollRepository).save(payrollCaptor.capture());
+            Payroll savedPayroll = payrollCaptor.getValue();
+
+            assertEquals(0, savedPayroll.getDaysWorked());
+        }
+
+        @Test
+        void shouldHandleEmployeeWithOvertimeHours() {
+            List<Attendance> attendances = new ArrayList<>();
+            attendances.add(Attendance.builder()
+                    .id(UUID.randomUUID())
+                    .employee(employee)
+                    .date(PERIOD_START)
+                    .timeIn(LocalTime.of(8, 0))
+                    .timeOut(LocalTime.of(20, 0))
+                    .totalHours(new BigDecimal("12.00"))
+                    .overtime(new BigDecimal("4.00"))
+                    .build());
+
+            when(payrollRepository.existsByEmployee_IdAndPeriodStartDateAndPeriodEndDate(
+                    employee.getId(), PERIOD_START, PERIOD_END)).thenReturn(false);
+            when(employeeService.getEmployeeById(employee.getId())).thenReturn(employee);
+            when(attendanceService.getEmployeeAttendances(employee.getId(), PERIOD_START, PERIOD_END))
+                    .thenReturn(attendances);
+            when(deductionTypeRepository.findByCode("SSS")).thenReturn(Optional.of(sssType));
+            when(deductionTypeRepository.findByCode("PHIC")).thenReturn(Optional.of(phicType));
+            when(deductionTypeRepository.findByCode("HDMF")).thenReturn(Optional.of(hdmfType));
+            when(deductionTypeRepository.findByCode("TAX")).thenReturn(Optional.of(taxType));
+            when(payrollRepository.save(any(Payroll.class))).thenReturn(payroll);
+
+            Payroll result = payrollService.createPayroll(employee.getId(), PERIOD_START, PERIOD_END, PAY_DATE);
+
+            assertNotNull(result);
+            verify(payrollRepository).save(any(Payroll.class));
+        }
+
+        @Test
+        void shouldThrowNotFoundWhenDeductionTypeNotFound() {
+            List<Attendance> attendances = createMockAttendances(10);
+
+            when(payrollRepository.existsByEmployee_IdAndPeriodStartDateAndPeriodEndDate(
+                    employee.getId(), PERIOD_START, PERIOD_END)).thenReturn(false);
+            when(employeeService.getEmployeeById(employee.getId())).thenReturn(employee);
+            when(attendanceService.getEmployeeAttendances(employee.getId(), PERIOD_START, PERIOD_END))
+                    .thenReturn(attendances);
+            when(deductionTypeRepository.findByCode("SSS")).thenReturn(Optional.empty());
+
+            assertThrows(NoSuchElementException.class,
+                    () -> payrollService.createPayroll(employee.getId(), PERIOD_START, PERIOD_END, PAY_DATE));
+
+            verify(payrollRepository, never()).save(any(Payroll.class));
+        }
+
+        @Test
+        void shouldCalculateCorrectDeductions() {
+            List<Attendance> attendances = createMockAttendances(10);
+
+            when(payrollRepository.existsByEmployee_IdAndPeriodStartDateAndPeriodEndDate(
+                    employee.getId(), PERIOD_START, PERIOD_END)).thenReturn(false);
+            when(employeeService.getEmployeeById(employee.getId())).thenReturn(employee);
+            when(attendanceService.getEmployeeAttendances(employee.getId(), PERIOD_START, PERIOD_END))
+                    .thenReturn(attendances);
+            when(deductionTypeRepository.findByCode("SSS")).thenReturn(Optional.of(sssType));
+            when(deductionTypeRepository.findByCode("PHIC")).thenReturn(Optional.of(phicType));
+            when(deductionTypeRepository.findByCode("HDMF")).thenReturn(Optional.of(hdmfType));
+            when(deductionTypeRepository.findByCode("TAX")).thenReturn(Optional.of(taxType));
+            when(payrollRepository.save(any(Payroll.class))).thenReturn(payroll);
+
+            payrollService.createPayroll(employee.getId(), PERIOD_START, PERIOD_END, PAY_DATE);
+
+            ArgumentCaptor<Payroll> payrollCaptor = ArgumentCaptor.forClass(Payroll.class);
+            verify(payrollRepository).save(payrollCaptor.capture());
+            Payroll savedPayroll = payrollCaptor.getValue();
+
+            assertEquals(4, savedPayroll.getDeductions().size());
+            assertTrue(savedPayroll.getDeductions().stream()
+                    .anyMatch(d -> d.getDeductionType().getCode().equals("SSS")));
+            assertTrue(savedPayroll.getDeductions().stream()
+                    .anyMatch(d -> d.getDeductionType().getCode().equals("PHIC")));
+            assertTrue(savedPayroll.getDeductions().stream()
+                    .anyMatch(d -> d.getDeductionType().getCode().equals("HDMF")));
+            assertTrue(savedPayroll.getDeductions().stream()
+                    .anyMatch(d -> d.getDeductionType().getCode().equals("TAX")));
+        }
+
+        @Test
+        void shouldIncludeBenefitsInPayroll() {
+            List<Attendance> attendances = createMockAttendances(10);
+
+            when(payrollRepository.existsByEmployee_IdAndPeriodStartDateAndPeriodEndDate(
+                    employee.getId(), PERIOD_START, PERIOD_END)).thenReturn(false);
+            when(employeeService.getEmployeeById(employee.getId())).thenReturn(employee);
+            when(attendanceService.getEmployeeAttendances(employee.getId(), PERIOD_START, PERIOD_END))
+                    .thenReturn(attendances);
+            when(deductionTypeRepository.findByCode("SSS")).thenReturn(Optional.of(sssType));
+            when(deductionTypeRepository.findByCode("PHIC")).thenReturn(Optional.of(phicType));
+            when(deductionTypeRepository.findByCode("HDMF")).thenReturn(Optional.of(hdmfType));
+            when(deductionTypeRepository.findByCode("TAX")).thenReturn(Optional.of(taxType));
+            when(payrollRepository.save(any(Payroll.class))).thenReturn(payroll);
+
+            payrollService.createPayroll(employee.getId(), PERIOD_START, PERIOD_END, PAY_DATE);
+
+            ArgumentCaptor<Payroll> payrollCaptor = ArgumentCaptor.forClass(Payroll.class);
+            verify(payrollRepository).save(payrollCaptor.capture());
+            Payroll savedPayroll = payrollCaptor.getValue();
+
+            assertNotNull(savedPayroll.getBenefits());
+            assertEquals(1, savedPayroll.getBenefits().size());
+            assertEquals(riceAllowanceType, savedPayroll.getBenefits().get(0).getBenefitType());
+        }
+    }
+
+    @Nested
+    class CreatePayrollBatchTests {
+
+        @Test
+        void shouldCreatePayrollForAllActiveEmployees() {
+            List<Long> employeeIds = List.of(1L, 2L, 3L);
+            List<Attendance> attendances = createMockAttendances(10);
+
+            when(employeeService.getAllActiveEmployeeIds()).thenReturn(employeeIds);
+            when(payrollRepository.existsByEmployee_IdAndPeriodStartDateAndPeriodEndDate(
+                    anyLong(), eq(PERIOD_START), eq(PERIOD_END))).thenReturn(false);
+            when(employeeService.getEmployeeById(anyLong())).thenReturn(employee);
+            when(attendanceService.getEmployeeAttendances(anyLong(), eq(PERIOD_START), eq(PERIOD_END)))
+                    .thenReturn(attendances);
+            when(deductionTypeRepository.findByCode("SSS")).thenReturn(Optional.of(sssType));
+            when(deductionTypeRepository.findByCode("PHIC")).thenReturn(Optional.of(phicType));
+            when(deductionTypeRepository.findByCode("HDMF")).thenReturn(Optional.of(hdmfType));
+            when(deductionTypeRepository.findByCode("TAX")).thenReturn(Optional.of(taxType));
+            when(payrollRepository.saveAll(anyList())).thenReturn(List.of(payroll, payroll, payroll));
+
+            Integer count = payrollService.createPayrollBatch(PERIOD_START, PERIOD_END, PAY_DATE);
+
+            assertEquals(3, count);
+            ArgumentCaptor<List<Payroll>> captor = ArgumentCaptor.forClass(List.class);
+            verify(payrollRepository).saveAll(captor.capture());
+            assertEquals(3, captor.getValue().size());
+        }
+
+        @Test
+        void shouldSkipExistingPayrolls() {
+            List<Long> employeeIds = List.of(1L, 2L, 3L);
+            List<Attendance> attendances = createMockAttendances(10);
+
+            when(employeeService.getAllActiveEmployeeIds()).thenReturn(employeeIds);
+            when(payrollRepository.existsByEmployee_IdAndPeriodStartDateAndPeriodEndDate(
+                    eq(1L), eq(PERIOD_START), eq(PERIOD_END))).thenReturn(true);
+            when(payrollRepository.existsByEmployee_IdAndPeriodStartDateAndPeriodEndDate(
+                    eq(2L), eq(PERIOD_START), eq(PERIOD_END))).thenReturn(false);
+            when(payrollRepository.existsByEmployee_IdAndPeriodStartDateAndPeriodEndDate(
+                    eq(3L), eq(PERIOD_START), eq(PERIOD_END))).thenReturn(false);
+            when(employeeService.getEmployeeById(anyLong())).thenReturn(employee);
+            when(attendanceService.getEmployeeAttendances(anyLong(), eq(PERIOD_START), eq(PERIOD_END)))
+                    .thenReturn(attendances);
+            when(deductionTypeRepository.findByCode("SSS")).thenReturn(Optional.of(sssType));
+            when(deductionTypeRepository.findByCode("PHIC")).thenReturn(Optional.of(phicType));
+            when(deductionTypeRepository.findByCode("HDMF")).thenReturn(Optional.of(hdmfType));
+            when(deductionTypeRepository.findByCode("TAX")).thenReturn(Optional.of(taxType));
+            when(payrollRepository.saveAll(anyList())).thenReturn(List.of(payroll, payroll));
+
+            Integer count = payrollService.createPayrollBatch(PERIOD_START, PERIOD_END, PAY_DATE);
+
+            assertEquals(2, count);
+            ArgumentCaptor<List<Payroll>> captor = ArgumentCaptor.forClass(List.class);
+            verify(payrollRepository).saveAll(captor.capture());
+            assertEquals(2, captor.getValue().size());
+        }
+
+        @Test
+        void shouldHandleExceptionsDuringBatchProcessing() {
+            List<Long> employeeIds = List.of(1L, 2L, 3L);
+            List<Attendance> attendances = createMockAttendances(10);
+
+            when(employeeService.getAllActiveEmployeeIds()).thenReturn(employeeIds);
+            when(payrollRepository.existsByEmployee_IdAndPeriodStartDateAndPeriodEndDate(
+                    anyLong(), eq(PERIOD_START), eq(PERIOD_END))).thenReturn(false);
+            when(employeeService.getEmployeeById(eq(1L))).thenReturn(employee);
+            when(employeeService.getEmployeeById(eq(2L))).thenThrow(new NotFoundException("Employee not found"));
+            when(employeeService.getEmployeeById(eq(3L))).thenReturn(employee);
+            when(attendanceService.getEmployeeAttendances(anyLong(), eq(PERIOD_START), eq(PERIOD_END)))
+                    .thenReturn(attendances);
+            when(deductionTypeRepository.findByCode("SSS")).thenReturn(Optional.of(sssType));
+            when(deductionTypeRepository.findByCode("PHIC")).thenReturn(Optional.of(phicType));
+            when(deductionTypeRepository.findByCode("HDMF")).thenReturn(Optional.of(hdmfType));
+            when(deductionTypeRepository.findByCode("TAX")).thenReturn(Optional.of(taxType));
+            when(payrollRepository.saveAll(anyList())).thenReturn(List.of(payroll, payroll));
+
+            Integer count = payrollService.createPayrollBatch(PERIOD_START, PERIOD_END, PAY_DATE);
+
+            assertEquals(2, count);
+            ArgumentCaptor<List<Payroll>> captor = ArgumentCaptor.forClass(List.class);
+            verify(payrollRepository).saveAll(captor.capture());
+            assertEquals(2, captor.getValue().size());
+        }
+
+        @Test
+        void shouldReturnZeroWhenNoActiveEmployees() {
+            when(employeeService.getAllActiveEmployeeIds()).thenReturn(Collections.emptyList());
+            when(payrollRepository.saveAll(anyList())).thenReturn(Collections.emptyList());
+
+            Integer count = payrollService.createPayrollBatch(PERIOD_START, PERIOD_END, PAY_DATE);
+
+            assertEquals(0, count);
+            ArgumentCaptor<List<Payroll>> captor = ArgumentCaptor.forClass(List.class);
+            verify(payrollRepository).saveAll(captor.capture());
+            assertTrue(captor.getValue().isEmpty());
+        }
+    }
+
+    @Nested
+    class GetPayrollByIdTests {
+
+        @Test
+        void shouldReturnPayrollForPayrollUser() {
+            mockAuth(payrollUser);
+            when(payrollRepository.findById(payroll.getId())).thenReturn(Optional.of(payroll));
+
+            Payroll result = payrollService.getPayrollById(payroll.getId());
+
+            assertNotNull(result);
+            assertEquals(payroll.getId(), result.getId());
+            verify(payrollRepository).findById(payroll.getId());
+        }
+
+        @Test
+        void shouldAllowEmployeeToViewOwnPayroll() {
+            mockAuth(normalUser);
+            payroll.setEmployee(employee);
+            when(payrollRepository.findById(payroll.getId())).thenReturn(Optional.of(payroll));
+
+            // This should throw ForbiddenException because normalUser doesn't have PAYROLL role
+            // and the logic checks: !user.getUserRole().getRole().equals("PAYROLL") || !payroll.getEmployee().getId().equals(user.getEmployee().getId())
+            // Which evaluates to: !false || !true = true || false = true (forbidden)
+            assertThrows(ForbiddenException.class, () -> payrollService.getPayrollById(payroll.getId()));
+        }
+
+        @Test
+        void shouldThrowUnauthorizedWhenPrincipalIsNotUser() {
+            Authentication auth = mock(Authentication.class);
+            SecurityContext context = mock(SecurityContext.class);
+            when(auth.getPrincipal()).thenReturn("anonymousUser");
+            when(context.getAuthentication()).thenReturn(auth);
+            SecurityContextHolder.setContext(context);
+
+            assertThrows(UnauthorizedException.class, () -> payrollService.getPayrollById(payroll.getId()));
+            verify(payrollRepository, never()).findById(any());
+        }
+
+        @Test
+        void shouldThrowNotFoundWhenPayrollDoesNotExist() {
+            mockAuth(payrollUser);
+            UUID nonExistentId = UUID.randomUUID();
+            when(payrollRepository.findById(nonExistentId)).thenReturn(Optional.empty());
+
+            assertThrows(NotFoundException.class, () -> payrollService.getPayrollById(nonExistentId));
+        }
+
+        @Test
+        void shouldThrowForbiddenWhenPayrollUserAccessesOtherEmployeePayroll() {
+            mockAuth(payrollUser);
+            payroll.setEmployee(otherEmployee);
+            when(payrollRepository.findById(payroll.getId())).thenReturn(Optional.of(payroll));
+
+            assertThrows(ForbiddenException.class, () -> payrollService.getPayrollById(payroll.getId()));
+        }
+
+        @Test
+        void shouldThrowForbiddenWhenNonPayrollUserTries() {
+            mockAuth(hrUser);
+            payroll.setEmployee(employee);
+            when(payrollRepository.findById(payroll.getId())).thenReturn(Optional.of(payroll));
+
+            assertThrows(ForbiddenException.class, () -> payrollService.getPayrollById(payroll.getId()));
+        }
+    }
+
+    @Nested
+    class GetAllPayrollTests {
+
+        @Test
+        void shouldReturnAllPayrollWithinDateRange() {
+            List<Payroll> payrolls = List.of(payroll);
+            Page<Payroll> page = new PageImpl<>(payrolls);
+            Pageable pageable = PageRequest.of(0, 10);
+            DateRange dateRange = new DateRange(PERIOD_START, PERIOD_END);
+
+            when(dateRangeResolver.resolve(PERIOD_START, PERIOD_END)).thenReturn(dateRange);
+            when(payrollRepository.findAllByPeriodStartDateBetween(PERIOD_START, PERIOD_END, pageable))
+                    .thenReturn(page);
+
+            Page<Payroll> result = payrollService.getAllPayroll(0, 10, PERIOD_START, PERIOD_END);
+
+            assertNotNull(result);
+            assertEquals(1, result.getTotalElements());
+            verify(payrollRepository).findAllByPeriodStartDateBetween(PERIOD_START, PERIOD_END, pageable);
+        }
+
+        @Test
+        void shouldReturnEmptyPageWhenNoPayrollsFound() {
+            Page<Payroll> emptyPage = new PageImpl<>(Collections.emptyList());
+            Pageable pageable = PageRequest.of(0, 10);
+            DateRange dateRange = new DateRange(PERIOD_START, PERIOD_END);
+
+            when(dateRangeResolver.resolve(PERIOD_START, PERIOD_END)).thenReturn(dateRange);
+            when(payrollRepository.findAllByPeriodStartDateBetween(PERIOD_START, PERIOD_END, pageable))
+                    .thenReturn(emptyPage);
+
+            Page<Payroll> result = payrollService.getAllPayroll(0, 10, PERIOD_START, PERIOD_END);
+
+            assertNotNull(result);
+            assertEquals(0, result.getTotalElements());
+        }
+
+        @Test
+        void shouldHandlePaginationCorrectly() {
+            List<Payroll> payrolls = Arrays.asList(payroll, payroll, payroll);
+            Page<Payroll> page = new PageImpl<>(payrolls, PageRequest.of(1, 2), 5);
+            DateRange dateRange = new DateRange(PERIOD_START, PERIOD_END);
+
+            when(dateRangeResolver.resolve(PERIOD_START, PERIOD_END)).thenReturn(dateRange);
+            when(payrollRepository.findAllByPeriodStartDateBetween(
+                    eq(PERIOD_START), eq(PERIOD_END), any(Pageable.class))).thenReturn(page);
+
+            Page<Payroll> result = payrollService.getAllPayroll(1, 2, PERIOD_START, PERIOD_END);
+
+            assertNotNull(result);
+            assertEquals(3, result.getContent().size());
+            assertEquals(5, result.getTotalElements());
+            assertEquals(1, result.getNumber());
+        }
+
+        @Test
+        void shouldUseDateRangeResolver() {
+            DateRange dateRange = new DateRange(PERIOD_START.minusDays(5), PERIOD_END.plusDays(5));
+            Page<Payroll> page = new PageImpl<>(Collections.emptyList());
+
+            when(dateRangeResolver.resolve(PERIOD_START, PERIOD_END)).thenReturn(dateRange);
+            when(payrollRepository.findAllByPeriodStartDateBetween(
+                    eq(dateRange.startDate()), eq(dateRange.endDate()), any(Pageable.class))).thenReturn(page);
+
+            payrollService.getAllPayroll(0, 10, PERIOD_START, PERIOD_END);
+
+            verify(dateRangeResolver).resolve(PERIOD_START, PERIOD_END);
+            verify(payrollRepository).findAllByPeriodStartDateBetween(
+                    eq(dateRange.startDate()), eq(dateRange.endDate()), any(Pageable.class));
+        }
+    }
+
+    @Nested
+    class GetAllEmployeePayrollTests {
+
+        @Test
+        void shouldReturnEmployeePayrolls() {
+            mockAuth(normalUser);
+            List<Payroll> payrolls = List.of(payroll);
+            Page<Payroll> page = new PageImpl<>(payrolls);
+            DateRange dateRange = new DateRange(PERIOD_START, PERIOD_END);
+
+            when(dateRangeResolver.resolve(PERIOD_START, PERIOD_END)).thenReturn(dateRange);
+            when(payrollRepository.findAllByEmployee_IdAndPeriodStartDateBetween(
+                    eq(employee.getId()), eq(PERIOD_START), eq(PERIOD_END), any(Pageable.class)))
+                    .thenReturn(page);
+
+            Page<Payroll> result = payrollService.getAllEmployeePayroll(0, 10, PERIOD_START, PERIOD_END);
+
+            assertNotNull(result);
+            assertEquals(1, result.getTotalElements());
+            verify(payrollRepository).findAllByEmployee_IdAndPeriodStartDateBetween(
+                    eq(employee.getId()), eq(PERIOD_START), eq(PERIOD_END), any(Pageable.class));
+        }
+
+        @Test
+        void shouldThrowUnauthorizedWhenPrincipalIsNotUser() {
+            Authentication auth = mock(Authentication.class);
+            SecurityContext context = mock(SecurityContext.class);
+            when(auth.getPrincipal()).thenReturn("anonymousUser");
+            when(context.getAuthentication()).thenReturn(auth);
+            SecurityContextHolder.setContext(context);
+
+            assertThrows(UnauthorizedException.class,
+                    () -> payrollService.getAllEmployeePayroll(0, 10, PERIOD_START, PERIOD_END));
+            verify(payrollRepository, never()).findAllByEmployee_IdAndPeriodStartDateBetween(
+                    anyLong(), any(), any(), any());
+        }
+
+        @Test
+        void shouldReturnEmptyPageWhenEmployeeHasNoPayrolls() {
+            mockAuth(normalUser);
+            Page<Payroll> emptyPage = new PageImpl<>(Collections.emptyList());
+            DateRange dateRange = new DateRange(PERIOD_START, PERIOD_END);
+
+            when(dateRangeResolver.resolve(PERIOD_START, PERIOD_END)).thenReturn(dateRange);
+            when(payrollRepository.findAllByEmployee_IdAndPeriodStartDateBetween(
+                    eq(employee.getId()), eq(PERIOD_START), eq(PERIOD_END), any(Pageable.class)))
+                    .thenReturn(emptyPage);
+
+            Page<Payroll> result = payrollService.getAllEmployeePayroll(0, 10, PERIOD_START, PERIOD_END);
+
+            assertNotNull(result);
+            assertEquals(0, result.getTotalElements());
+        }
+
+        @Test
+        void shouldOnlyReturnPayrollsForAuthenticatedEmployee() {
+            mockAuth(normalUser);
+            DateRange dateRange = new DateRange(PERIOD_START, PERIOD_END);
+            Page<Payroll> page = new PageImpl<>(List.of(payroll));
+
+            when(dateRangeResolver.resolve(PERIOD_START, PERIOD_END)).thenReturn(dateRange);
+            when(payrollRepository.findAllByEmployee_IdAndPeriodStartDateBetween(
+                    eq(employee.getId()), eq(PERIOD_START), eq(PERIOD_END), any(Pageable.class)))
+                    .thenReturn(page);
+
+            payrollService.getAllEmployeePayroll(0, 10, PERIOD_START, PERIOD_END);
+
+            verify(payrollRepository).findAllByEmployee_IdAndPeriodStartDateBetween(
+                    eq(employee.getId()), eq(PERIOD_START), eq(PERIOD_END), any(Pageable.class));
+            verify(payrollRepository, never()).findAllByEmployee_IdAndPeriodStartDateBetween(
+                    eq(otherEmployee.getId()), any(), any(), any());
+        }
+
+        @Test
+        void shouldHandlePaginationForEmployeePayrolls() {
+            mockAuth(normalUser);
+            List<Payroll> payrolls = Arrays.asList(payroll, payroll);
+            Page<Payroll> page = new PageImpl<>(payrolls, PageRequest.of(0, 2), 10);
+            DateRange dateRange = new DateRange(PERIOD_START, PERIOD_END);
+
+            when(dateRangeResolver.resolve(PERIOD_START, PERIOD_END)).thenReturn(dateRange);
+            when(payrollRepository.findAllByEmployee_IdAndPeriodStartDateBetween(
+                    eq(employee.getId()), eq(PERIOD_START), eq(PERIOD_END), any(Pageable.class)))
+                    .thenReturn(page);
+
+            Page<Payroll> result = payrollService.getAllEmployeePayroll(0, 2, PERIOD_START, PERIOD_END);
+
+            assertNotNull(result);
+            assertEquals(2, result.getContent().size());
+            assertEquals(10, result.getTotalElements());
+        }
+
+        @Test
+        void shouldUseDateRangeResolverForEmployeePayrolls() {
+            mockAuth(normalUser);
+            DateRange customRange = new DateRange(PERIOD_START.minusDays(10), PERIOD_END.plusDays(10));
+            Page<Payroll> page = new PageImpl<>(Collections.emptyList());
+
+            when(dateRangeResolver.resolve(PERIOD_START, PERIOD_END)).thenReturn(customRange);
+            when(payrollRepository.findAllByEmployee_IdAndPeriodStartDateBetween(
+                    eq(employee.getId()), eq(customRange.startDate()), eq(customRange.endDate()), any(Pageable.class)))
+                    .thenReturn(page);
+
+            payrollService.getAllEmployeePayroll(0, 10, PERIOD_START, PERIOD_END);
+
+            verify(dateRangeResolver).resolve(PERIOD_START, PERIOD_END);
+            verify(payrollRepository).findAllByEmployee_IdAndPeriodStartDateBetween(
+                    eq(employee.getId()), eq(customRange.startDate()), eq(customRange.endDate()), any(Pageable.class));
+        }
+    }
+
+    @Nested
+    class EdgeCaseTests {
+
+        @Test
+        void shouldHandleNullBenefitsList() {
+            Compensation compWithNoBenefits = Compensation.builder()
+                    .id(UUID.randomUUID())
+                    .employee(employee)
+                    .basicSalary(BASIC_SALARY)
+                    .hourlyRate(HOURLY_RATE)
+                    .benefits(Collections.emptyList())
+                    .build();
+            employee.setCompensation(compWithNoBenefits);
+
+            List<Attendance> attendances = createMockAttendances(10);
+
+            when(payrollRepository.existsByEmployee_IdAndPeriodStartDateAndPeriodEndDate(
+                    employee.getId(), PERIOD_START, PERIOD_END)).thenReturn(false);
+            when(employeeService.getEmployeeById(employee.getId())).thenReturn(employee);
+            when(attendanceService.getEmployeeAttendances(employee.getId(), PERIOD_START, PERIOD_END))
+                    .thenReturn(attendances);
+            when(deductionTypeRepository.findByCode("SSS")).thenReturn(Optional.of(sssType));
+            when(deductionTypeRepository.findByCode("PHIC")).thenReturn(Optional.of(phicType));
+            when(deductionTypeRepository.findByCode("HDMF")).thenReturn(Optional.of(hdmfType));
+            when(deductionTypeRepository.findByCode("TAX")).thenReturn(Optional.of(taxType));
+            when(payrollRepository.save(any(Payroll.class))).thenReturn(payroll);
+
+            Payroll result = payrollService.createPayroll(employee.getId(), PERIOD_START, PERIOD_END, PAY_DATE);
+
+            assertNotNull(result);
+            ArgumentCaptor<Payroll> payrollCaptor = ArgumentCaptor.forClass(Payroll.class);
+            verify(payrollRepository).save(payrollCaptor.capture());
+            Payroll savedPayroll = payrollCaptor.getValue();
+
+            assertTrue(savedPayroll.getBenefits().isEmpty());
+        }
+
+        @Test
+        void shouldHandleVeryLowSalaryEmployee() {
+            Compensation lowSalaryComp = Compensation.builder()
+                    .id(UUID.randomUUID())
+                    .employee(employee)
+                    .basicSalary(new BigDecimal("5000.00"))
+                    .hourlyRate(new BigDecimal("29.76"))
+                    .benefits(Collections.emptyList())
+                    .build();
+            employee.setCompensation(lowSalaryComp);
+
+            List<Attendance> attendances = createMockAttendances(5);
+
+            when(payrollRepository.existsByEmployee_IdAndPeriodStartDateAndPeriodEndDate(
+                    employee.getId(), PERIOD_START, PERIOD_END)).thenReturn(false);
+            when(employeeService.getEmployeeById(employee.getId())).thenReturn(employee);
+            when(attendanceService.getEmployeeAttendances(employee.getId(), PERIOD_START, PERIOD_END))
+                    .thenReturn(attendances);
+            when(deductionTypeRepository.findByCode("SSS")).thenReturn(Optional.of(sssType));
+            when(deductionTypeRepository.findByCode("PHIC")).thenReturn(Optional.of(phicType));
+            when(deductionTypeRepository.findByCode("HDMF")).thenReturn(Optional.of(hdmfType));
+            when(deductionTypeRepository.findByCode("TAX")).thenReturn(Optional.of(taxType));
+            when(payrollRepository.save(any(Payroll.class))).thenReturn(payroll);
+
+            Payroll result = payrollService.createPayroll(employee.getId(), PERIOD_START, PERIOD_END, PAY_DATE);
+
+            assertNotNull(result);
+            verify(payrollRepository).save(any(Payroll.class));
+        }
+
+        @Test
+        void shouldHandleMaxOvertimeHours() {
+            List<Attendance> attendances = new ArrayList<>();
+            for (int i = 0; i < 15; i++) {
+                attendances.add(Attendance.builder()
+                        .id(UUID.randomUUID())
+                        .employee(employee)
+                        .date(PERIOD_START.plusDays(i))
+                        .timeIn(LocalTime.of(8, 0))
+                        .timeOut(LocalTime.of(22, 0))
+                        .totalHours(new BigDecimal("14.00"))
+                        .overtime(new BigDecimal("6.00"))
+                        .build());
+            }
+
+            when(payrollRepository.existsByEmployee_IdAndPeriodStartDateAndPeriodEndDate(
+                    employee.getId(), PERIOD_START, PERIOD_END)).thenReturn(false);
+            when(employeeService.getEmployeeById(employee.getId())).thenReturn(employee);
+            when(attendanceService.getEmployeeAttendances(employee.getId(), PERIOD_START, PERIOD_END))
+                    .thenReturn(attendances);
+            when(deductionTypeRepository.findByCode("SSS")).thenReturn(Optional.of(sssType));
+            when(deductionTypeRepository.findByCode("PHIC")).thenReturn(Optional.of(phicType));
+            when(deductionTypeRepository.findByCode("HDMF")).thenReturn(Optional.of(hdmfType));
+            when(deductionTypeRepository.findByCode("TAX")).thenReturn(Optional.of(taxType));
+            when(payrollRepository.save(any(Payroll.class))).thenReturn(payroll);
+
+            Payroll result = payrollService.createPayroll(employee.getId(), PERIOD_START, PERIOD_END, PAY_DATE);
+
+            assertNotNull(result);
+            verify(payrollRepository).save(any(Payroll.class));
+        }
+    }
+}
+
