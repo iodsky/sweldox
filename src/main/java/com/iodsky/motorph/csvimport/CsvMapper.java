@@ -7,6 +7,4 @@ public interface CsvMapper<T, K> {
 
     T toEntity(K k);
 
-    K toCsvRecord(T t);
-
 }
