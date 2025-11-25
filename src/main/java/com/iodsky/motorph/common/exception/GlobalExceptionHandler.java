@@ -56,6 +56,12 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(error, HttpStatus.FORBIDDEN);
     }
 
+    @ExceptionHandler(CsvImportException.class)
+    public ResponseEntity<ErrorResponse> handleCsvImportException(CsvImportException ex) {
+        ErrorResponse error = new ErrorResponse(LocalDateTime.now(), 400, ex.getMessage(), null);
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleAllOtherException(Exception ex) {
         ErrorResponse error = new ErrorResponse(LocalDateTime.now(), 500, ex.getMessage(), null);
