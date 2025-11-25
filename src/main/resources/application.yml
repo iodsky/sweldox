@@ -1,6 +1,9 @@
 spring:
   application:
     name: motorph
+  sql:
+    init:
+      mode: always
 
 server:
   port: ${PORT}

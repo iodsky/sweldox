@@ -4,9 +4,9 @@ spring:
       on-profile: local
 
   datasource:
-    url: jdbc:postgresql://localhost:${DATASOURCE_PORT}/${DATASOURCE_DB}
-    username: ${DATASOURCE_USER}
-    password: ${DATASOURCE_PASSWORD}
+    url: jdbc:postgresql://${LOCAL_DB_HOST}:${LOCAL_DB_PORT}/${LOCAL_DB}
+    username: ${LOCAL_DB_USER}
+    password: ${LOCAL_DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
 
   jpa:
