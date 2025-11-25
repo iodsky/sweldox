@@ -1,6 +1,7 @@
 package com.iodsky.motorph.security.user;
 
 import com.iodsky.motorph.common.exception.BadRequestException;
+import com.iodsky.motorph.common.exception.CsvImportException;
 import com.iodsky.motorph.common.exception.NotFoundException;
 import com.iodsky.motorph.csvimport.CsvResult;
 import com.iodsky.motorph.csvimport.CsvService;
@@ -18,7 +19,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -31,7 +31,7 @@ public class UserService implements UserDetailsService {
     private final UserMapper userMapper;
     private final EmployeeService employeeService;
     private final PasswordEncoder passwordEncoder;
-    private final CsvService<User, UserCsvRecord>  csvService;
+    private final CsvService<User, UserCsvRecord> userCsvService;
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
@@ -70,7 +70,7 @@ public class UserService implements UserDetailsService {
     public Integer importUsers(MultipartFile file) {
         try {
             Set<CsvResult<User, UserCsvRecord>> records =
-                    csvService.parseCsv(file.getInputStream(), UserCsvRecord.class);
+                    userCsvService.parseCsv(file.getInputStream(), UserCsvRecord.class);
 
             Set<User> users = records.stream().map(r -> {
                 User user = r.entity();
@@ -92,7 +92,7 @@ public class UserService implements UserDetailsService {
             userRepository.saveAll(users);
             return users.size();
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new CsvImportException(e.getMessage());
         }
     }
 
