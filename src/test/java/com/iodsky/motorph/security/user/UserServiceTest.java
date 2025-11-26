@@ -247,7 +247,7 @@ class UserServiceTest {
         @Test
         void shouldImportUsersSuccessfully() throws IOException {
             CsvResult<User, UserCsvRecord> csvResult = new CsvResult<>(csvUser, csvRecord);
-            Set<CsvResult<User, UserCsvRecord>> records = Set.of(csvResult);
+            List<CsvResult<User, UserCsvRecord>> records = List.of(csvResult);
 
             MockMultipartFile file = new MockMultipartFile(
                     "file", "users.csv", "text/csv", "csv content".getBytes());
@@ -257,19 +257,19 @@ class UserServiceTest {
             when(userRoleRepository.findById("HR")).thenReturn(Optional.of(role));
             when(passwordEncoder.encode("plainPassword")).thenReturn("encodedPassword");
             when(userRepository.existsByEmail("csv.user@example.com")).thenReturn(false);
-            when(userRepository.saveAll(anySet())).thenReturn(List.of(csvUser));
+            when(userRepository.saveAll(anyList())).thenReturn(List.of(csvUser));
 
             Integer result = userService.importUsers(file);
 
             assertEquals(1, result);
             verify(csvService).parseCsv(any(InputStream.class), eq(UserCsvRecord.class));
-            verify(userRepository).saveAll(anySet());
+            verify(userRepository).saveAll(anyList());
         }
 
         @Test
         void shouldFilterOutExistingUsers() throws IOException {
             CsvResult<User, UserCsvRecord> csvResult = new CsvResult<>(csvUser, csvRecord);
-            Set<CsvResult<User, UserCsvRecord>> records = Set.of(csvResult);
+            List<CsvResult<User, UserCsvRecord>> records = List.of(csvResult);
 
             MockMultipartFile file = new MockMultipartFile(
                     "file", "users.csv", "text/csv", "csv content".getBytes());
@@ -279,18 +279,18 @@ class UserServiceTest {
             when(userRoleRepository.findById("HR")).thenReturn(Optional.of(role));
             when(passwordEncoder.encode(anyString())).thenReturn("encoded");
             when(userRepository.existsByEmail("csv.user@example.com")).thenReturn(true);
-            when(userRepository.saveAll(anySet())).thenReturn(List.of());
+            when(userRepository.saveAll(anyList())).thenReturn(List.of());
 
             Integer result = userService.importUsers(file);
 
             assertEquals(0, result);
-            verify(userRepository).saveAll(argThat(set -> ((Set<?>) set).isEmpty()));
+            verify(userRepository).saveAll(argThat(list -> ((List<?>) list).isEmpty()));
         }
 
         @Test
         void shouldEncodePasswordsForImportedUsers() throws IOException {
             CsvResult<User, UserCsvRecord> csvResult = new CsvResult<>(csvUser, csvRecord);
-            Set<CsvResult<User, UserCsvRecord>> records = Set.of(csvResult);
+            List<CsvResult<User, UserCsvRecord>> records = List.of(csvResult);
 
             MockMultipartFile file = new MockMultipartFile(
                     "file", "users.csv", "text/csv", "csv content".getBytes());
@@ -300,7 +300,7 @@ class UserServiceTest {
             when(userRoleRepository.findById("HR")).thenReturn(Optional.of(role));
             when(passwordEncoder.encode("plainPassword")).thenReturn("ENCODED_PASSWORD");
             when(userRepository.existsByEmail(anyString())).thenReturn(false);
-            when(userRepository.saveAll(anySet())).thenReturn(List.of(csvUser));
+            when(userRepository.saveAll(anyList())).thenReturn(List.of(csvUser));
 
             userService.importUsers(file);
 
@@ -322,7 +322,7 @@ class UserServiceTest {
         @Test
         void shouldSetEmployeeAndRoleForEachImportedUser() throws IOException {
             CsvResult<User, UserCsvRecord> csvResult = new CsvResult<>(csvUser, csvRecord);
-            Set<CsvResult<User, UserCsvRecord>> records = Set.of(csvResult);
+            List<CsvResult<User, UserCsvRecord>> records = List.of(csvResult);
 
             MockMultipartFile file = new MockMultipartFile(
                     "file", "users.csv", "text/csv", "csv content".getBytes());
@@ -332,7 +332,7 @@ class UserServiceTest {
             when(userRoleRepository.findById("HR")).thenReturn(Optional.of(role));
             when(passwordEncoder.encode(anyString())).thenReturn("encoded");
             when(userRepository.existsByEmail(anyString())).thenReturn(false);
-            when(userRepository.saveAll(anySet())).thenReturn(List.of(csvUser));
+            when(userRepository.saveAll(anyList())).thenReturn(List.of(csvUser));
 
             userService.importUsers(file);
 

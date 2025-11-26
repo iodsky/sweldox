@@ -6,6 +6,7 @@ import com.opencsv.bean.HeaderColumnNameMappingStrategy;
 import lombok.RequiredArgsConstructor;
 
 import java.io.*;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -14,7 +15,7 @@ public class CsvService<T, K> {
 
     private final CsvMapper<T, K> csvMapper;
 
-    final public Set<CsvResult<T, K>> parseCsv(InputStream stream, Class<K> type) throws IOException {
+    final public List<CsvResult<T, K>> parseCsv(InputStream stream, Class<K> type) throws IOException {
         try (Reader reader = new BufferedReader(new InputStreamReader(stream))) {
             HeaderColumnNameMappingStrategy<K> strategy = new HeaderColumnNameMappingStrategy<>();
             strategy.setType(type);
@@ -28,7 +29,7 @@ public class CsvService<T, K> {
             return csvToBean.parse()
                     .stream()
                     .map(csv -> new CsvResult<>(csvMapper.toEntity(csv), csv))
-                    .collect(Collectors.toSet());
+                    .toList();
 
         }
     }

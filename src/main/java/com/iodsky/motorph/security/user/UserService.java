@@ -19,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -69,10 +70,10 @@ public class UserService implements UserDetailsService {
 
     public Integer importUsers(MultipartFile file) {
         try {
-            Set<CsvResult<User, UserCsvRecord>> records =
+            List<CsvResult<User, UserCsvRecord>> records =
                     userCsvService.parseCsv(file.getInputStream(), UserCsvRecord.class);
 
-            Set<User> users = records.stream().map(r -> {
+            List<User> users = records.stream().map(r -> {
                 User user = r.entity();
                 UserCsvRecord csv = r.source();
 
@@ -87,7 +88,7 @@ public class UserService implements UserDetailsService {
                 return user;
             })
                     .filter(u -> !userRepository.existsByEmail(u.getEmail()))
-                    .collect(Collectors.toSet());
+                    .toList();
 
             userRepository.saveAll(users);
             return users.size();

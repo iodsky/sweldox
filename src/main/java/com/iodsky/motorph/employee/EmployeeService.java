@@ -152,7 +152,7 @@ public class EmployeeService {
     @Transactional
     public Integer importEmployees(MultipartFile file) {
         try {
-            Set<CsvResult<Employee, EmployeeCsvRecord>> records =
+            List<CsvResult<Employee, EmployeeCsvRecord>> records =
                     employeeCsvService.parseCsv(file.getInputStream(), EmployeeCsvRecord.class);
 
             BenefitType mealBenefitType = benefitService.getBenefitTypeById("MEAL");
@@ -166,7 +166,7 @@ public class EmployeeService {
 
             Map<Employee, Long> employeeSupervisorMap = new HashMap<>();
 
-            Set<Employee> employees = records.stream().map(r -> {
+            List<Employee> employees = records.stream().map(r -> {
                 Employee employee = r.entity();
                 EmployeeCsvRecord csv = r.source();
 
@@ -216,7 +216,7 @@ public class EmployeeService {
                 employeeSupervisorMap.put(employee, csv.getSupervisorId());
 
                 return employee;
-            }).collect(Collectors.toSet());
+            }).toList();
 
             List<Employee> savedEmployees = employeeRepository.saveAll(employees);
 
