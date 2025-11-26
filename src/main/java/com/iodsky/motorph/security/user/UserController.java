@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/users")
@@ -41,8 +42,9 @@ public class UserController {
     }
 
     @PostMapping("/import")
-    public ResponseEntity<Integer> importUsers(@RequestPart("file") MultipartFile file) {
-        return ResponseEntity.ok(userService.importUsers(file));
+    public ResponseEntity<Map<String, Integer>> importUsers(@RequestPart("file") MultipartFile file) {
+        Integer count = userService.importUsers(file);
+        return ResponseEntity.ok(Map.of("recordsCreated", count));
     }
 
 }
