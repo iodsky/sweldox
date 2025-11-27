@@ -1,18 +1,21 @@
 services:
   spring:
     container_name: mph-server
-    build: .
+    image: ghcr.io/iodsky/motorph-api:latest
     restart: always
     ports:
       - 8001:8001
     env_file:
       - .env
-    depends_on:
-      - postgresql
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.motorph.rule=Host(`motorph.iodsky.com`)"
+      - "traefik.http.routers.motorph.entrypoints=websecure"
+      - "traefik.http.routers.motorph.tls.certresolver=myresolver"
+      - "traefik.http.services.orderly.loadbalancer.server.port=8001"
     networks:
       - mph-network
       - traefik
-
   watchtower:
     image: containrrr/watchtower
     restart: always
