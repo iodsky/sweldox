@@ -45,6 +45,16 @@ public class LeaveController {
     }
 
     @PreAuthorize("hasRole('HR')")
+    @PatchMapping("/{leaveRequestId}")
+    public ResponseEntity<LeaveRequestDto> updateLeaveStatus(
+            @PathVariable String leaveRequestId,
+            @Valid @RequestBody UpdateLeaveStatusDto dto) {
+        LeaveRequest leaveRequest = leaveRequestService.updateLeaveStatus(leaveRequestId, dto.getStatus());
+
+        return ResponseEntity.ok(leaveRequestMapper.toDto(leaveRequest));
+    }
+
+    @PreAuthorize("hasRole('HR')")
     @PostMapping("/credits")
     public ResponseEntity<Map<String, Integer>> importLeaveCredits(@RequestPart MultipartFile file) {
         Integer count = leaveCreditService.importLeaveCredits(file);

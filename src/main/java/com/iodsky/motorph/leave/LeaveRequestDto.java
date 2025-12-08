@@ -34,5 +34,5 @@ public class LeaveRequestDto {
 
     private String note;
 
-
+    private String status;
 }

@@ -1,6 +1,7 @@
 package com.iodsky.motorph.leave;
 
 import com.iodsky.motorph.common.exception.BadRequestException;
+import com.iodsky.motorph.common.exception.NotFoundException;
 import com.iodsky.motorph.common.exception.UnauthorizedException;
 import com.iodsky.motorph.security.user.User;
 import jakarta.transaction.Transactional;
@@ -74,6 +75,30 @@ public class LeaveRequestService {
         }
 
         return leaveRequestRepository.findAllByEmployee_Id(user.getEmployee().getId(), page);
+    }
+
+    @Transactional
+    public LeaveRequest updateLeaveStatus(String leaveRequestId, LeaveStatus newStatus) {
+        LeaveRequest leaveRequest = leaveRequestRepository.findById(leaveRequestId)
+                .orElseThrow(() -> new NotFoundException("Leave request " + leaveRequestId + " not found"));
+
+        if (!leaveRequest.getLeaveStatus().equals(LeaveStatus.PENDING)) {
+            throw new BadRequestException("Leave request " + leaveRequestId + " has already been processed");
+        }
+
+        leaveRequest.setLeaveStatus(newStatus);
+
+        if (newStatus.equals(LeaveStatus.APPROVED)) {
+            double deduction = calculateTotalDays(leaveRequest.getStartDate(), leaveRequest.getEndDate());
+            LeaveCredit leaveCredit = leaveCreditService.getLeaveCreditByEmployeeIdAndType(leaveRequest.getEmployee().getId(), leaveRequest.getLeaveType());
+
+            double newCredits = leaveCredit.getCredits() - deduction;
+            leaveCredit.setCredits(newCredits);
+
+            leaveCreditService.updateLeaveCredit(leaveCredit.getId(), leaveCredit);
+        }
+
+        return leaveRequestRepository.save(leaveRequest);
     }
 
     private double calculateTotalDays(LocalDate startDate, LocalDate endDate) {

@@ -14,6 +14,7 @@ public class LeaveRequestMapper {
                 .startDate(leaveRequest.getStartDate())
                 .endDate(leaveRequest.getEndDate())
                 .note(leaveRequest.getNote())
+                .status(leaveRequest.getLeaveStatus().toString())
                 .build();
     }
 
