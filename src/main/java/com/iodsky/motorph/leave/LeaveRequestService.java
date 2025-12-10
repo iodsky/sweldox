@@ -4,6 +4,7 @@ import com.iodsky.motorph.common.exception.BadRequestException;
 import com.iodsky.motorph.common.exception.NotFoundException;
 import com.iodsky.motorph.common.exception.UnauthorizedException;
 import com.iodsky.motorph.security.user.User;
+import jakarta.persistence.OptimisticLockException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -79,8 +80,7 @@ public class LeaveRequestService {
 
     @Transactional
     public LeaveRequest updateLeaveStatus(String leaveRequestId, LeaveStatus newStatus) {
-        LeaveRequest leaveRequest = leaveRequestRepository.findById(leaveRequestId)
-                .orElseThrow(() -> new NotFoundException("Leave request " + leaveRequestId + " not found"));
+        LeaveRequest leaveRequest = getLeaveRequestById(leaveRequestId);
 
         if (!leaveRequest.getLeaveStatus().equals(LeaveStatus.PENDING)) {
             throw new BadRequestException("Leave request " + leaveRequestId + " has already been processed");
@@ -89,16 +89,33 @@ public class LeaveRequestService {
         leaveRequest.setLeaveStatus(newStatus);
 
         if (newStatus.equals(LeaveStatus.APPROVED)) {
-            double deduction = calculateTotalDays(leaveRequest.getStartDate(), leaveRequest.getEndDate());
+            double daysToDeduct = calculateTotalDays(leaveRequest.getStartDate(), leaveRequest.getEndDate());
             LeaveCredit leaveCredit = leaveCreditService.getLeaveCreditByEmployeeIdAndType(leaveRequest.getEmployee().getId(), leaveRequest.getLeaveType());
 
-            double newCredits = leaveCredit.getCredits() - deduction;
+            if (leaveCredit.getCredits() < daysToDeduct) {
+                throw new BadRequestException(
+                        String.format("Cannot approve leave request. Insufficient credits. " +
+                                "Required: %.1f days, Available: %.1f days. ",
+                                daysToDeduct, leaveCredit.getCredits())
+                );
+            }
+
+            double newCredits = leaveCredit.getCredits() - daysToDeduct;
             leaveCredit.setCredits(newCredits);
 
             leaveCreditService.updateLeaveCredit(leaveCredit.getId(), leaveCredit);
         }
 
-        return leaveRequestRepository.save(leaveRequest);
+        try {
+            return leaveRequestRepository.save(leaveRequest);
+        } catch (OptimisticLockException e) {
+            throw new BadRequestException("Leave credits were modified by another process.");
+        }
+    }
+
+    public LeaveRequest getLeaveRequestById(String leaveRequestId) {
+        return leaveRequestRepository.findById(leaveRequestId)
+                .orElseThrow(() -> new NotFoundException("Leave request " + leaveRequestId + " not found"));
     }
 
     private double calculateTotalDays(LocalDate startDate, LocalDate endDate) {
@@ -106,7 +123,6 @@ public class LeaveRequestService {
         LocalDate date = startDate;
 
         while (!date.isAfter(endDate)) {
-            DayOfWeek day = date.getDayOfWeek();
             if (!isWeekend(date)) {
                 days++;
             }
