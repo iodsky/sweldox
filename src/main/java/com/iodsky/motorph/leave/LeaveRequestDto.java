@@ -3,6 +3,7 @@ package com.iodsky.motorph.leave;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.FutureOrPresent;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.Builder;
 import lombok.Data;
 
@@ -32,6 +33,7 @@ public class LeaveRequestDto {
     @FutureOrPresent
     private LocalDate endDate;
 
+    @Size(max = 250)
     private String note;
 
     private String status;
