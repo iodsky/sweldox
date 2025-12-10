@@ -3,6 +3,7 @@ package com.iodsky.motorph.leave;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.iodsky.motorph.employee.model.Employee;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Min;
 import lombok.*;
 
 import java.util.UUID;
@@ -28,6 +29,10 @@ public class LeaveCredit {
     @Enumerated(value = EnumType.STRING)
     private LeaveType type;
 
+    @Min(value = 0, message = "Leave credits cannot be negative")
     private double credits;
+
+    @Version
+    private Long version;
 
 }
