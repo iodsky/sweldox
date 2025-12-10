@@ -47,4 +47,7 @@ public class LeaveRequest {
     @Enumerated(value = EnumType.STRING)
     private LeaveStatus leaveStatus;
 
+    @Version
+    private Long version;
+
 }
