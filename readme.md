@@ -42,6 +42,7 @@ motorph_api/
 │   │   │   ├── common/                       # Shared utilities and DTOs
 │   │   │   ├── csvimport/                    # CSV import functionality
 │   │   │   ├── employee/                     # Employee management module
+│   │   │   ├── leave/                        # Leave management module
 │   │   │   ├── organization/                 # Department & Position management
 │   │   │   ├── payroll/                      # Payroll processing module
 │   │   │   └── security/                     # Authentication & Authorization
@@ -91,6 +92,17 @@ The database schema follows a normalized relational design with the following ke
 - One-to-one with Employee
 - Contains username, password (encrypted), and roles
 
+**Leave Management**
+- **LeaveRequest** - Employee leave applications
+  - Many-to-one relationship with Employee
+  - Fields: leave type, request date, start/end dates, status, notes
+  - Status: PENDING, APPROVED, REJECTED
+  - Types: Vacation, Sick, Maternity, Paternity, Solo Parent, Bereavement
+- **LeaveCredit** - Employee leave balances
+  - Many-to-one relationship with Employee
+  - Tracks available leave credits by type and fiscal year
+  - Fields: leave type, credits (days), fiscal year
+
 ## 🔑 Key Features
 
 ### 1. Employee Management
@@ -119,7 +131,30 @@ The database schema follows a normalized relational design with the following ke
 - Integration with attendance data for accurate calculations
 - Benefits and deductions management system
 
-### 4. Security & Authentication
+### 4. Leave Management
+- **Leave Request Management**
+  - Create, update, and track employee leave requests
+  - Support for multiple leave types: Vacation, Sick, Maternity, Paternity, Solo Parent, Bereavement
+  - Automatic business day calculation (excludes weekends)
+  - Leave status workflow: PENDING → APPROVED/REJECTED
+  - Employees can manage their own leave requests
+  - HR can view and approve/reject all leave requests
+  - Validation to prevent overlapping leave requests
+  - Note/reason field for leave justification
+  
+- **Leave Credit Management**
+  - Initialize leave credits for employees (HR only)
+  - Default annual leave allocations:
+    - Vacation Leave: 14 days
+    - Sick Leave: 7 days
+    - Bereavement Leave: 5 days
+  - Fiscal year-based credit tracking
+  - Automatic credit validation before leave approval
+  - Real-time credit balance tracking
+  - CSV bulk import for leave credit initialization
+  - View personal leave credit balances
+
+### 5. Security & Authentication
 - JWT-based stateless authentication
 - Role-based access control (RBAC) with method-level security
 - Secure password hashing with BCrypt
@@ -127,14 +162,14 @@ The database schema follows a normalized relational design with the following ke
 - User session management through JWT tokens
 - Token-based API security
 
-### 5. User Management
+### 6. User Management
 - User account creation and management
 - Role assignment and permission control
 - Integration with employee records
 - CSV bulk import for user accounts
 - IT-role exclusive access for user administration
 
-### 6. Data Import
+### 7. Data Import
 - CSV file processing for bulk data imports
 - Employee data import with validation
 - User account bulk creation
@@ -215,6 +250,23 @@ GET    /api/payroll           # Get all payroll records with pagination (PAYROLL
 GET    /api/payroll/me        # Get my payroll records with pagination
                               # Query params: page, limit, periodStartDate, periodEndDate
 GET    /api/payroll/{id}      # Get payroll by ID
+```
+
+### Leave Management
+```
+POST   /api/leaves            # Create leave request
+GET    /api/leaves            # Get leave requests with pagination
+                              # Employees see own requests, HR sees all
+                              # Query params: pageNum, limit
+GET    /api/leaves/{id}       # Get leave request by ID
+PUT    /api/leaves/{id}       # Update leave request (own requests only)
+PATCH  /api/leaves/{id}       # Update leave status - approve/reject (HR only)
+DELETE /api/leaves/{id}       # Delete leave request
+
+POST   /api/leaves/credits    # Initialize employee leave credits (HR only)
+                              # Supports JSON body or CSV upload (multipart/form-data)
+GET    /api/leaves/credits    # Get my leave credit balances
+DELETE /api/leaves/credits/employees/{employeeId}  # Delete employee leave credits
 ```
 
 ### User Management
@@ -361,6 +413,8 @@ The project includes comprehensive test coverage:
   - Employee Service
   - Attendance Service
   - Payroll Service
+  - Leave Request Service
+  - Leave Credit Service
   - User Service
 
 Run tests with:
@@ -374,6 +428,7 @@ Run tests with:
 - [x] Employee management system
 - [x] Attendance tracking
 - [x] Payroll processing
+- [x] Leave management system
 - [x] JWT authentication
 - [x] Role-based authorization
 - [x] CSV import functionality
