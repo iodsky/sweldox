@@ -1,7 +1,8 @@
 package com.iodsky.motorph.payroll;
 
-import com.iodsky.motorph.common.exception.NotFoundException;
+import com.iodsky.motorph.common.exception.ApiException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -12,7 +13,7 @@ public class BenefitService {
 
     public BenefitType getBenefitTypeById(String id) {
         return benefitTypeRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Benefit type " + id + " not found"));
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Benefit type " + id + " not found"));
     }
 
 }
