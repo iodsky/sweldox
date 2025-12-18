@@ -11,12 +11,13 @@ import java.util.List;
 @Data
 @Builder
 @AllArgsConstructor
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class ErrorResponse {
+
     private Instant timestamp;
     private int status;
     private String message;
-
-    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private String path;
     private List<FieldValidationError> fieldErrors;
 
     @Data

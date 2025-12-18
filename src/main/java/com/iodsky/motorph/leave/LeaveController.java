@@ -1,13 +1,11 @@
 package com.iodsky.motorph.leave;
 
-import com.iodsky.motorph.common.PageDto;
-import com.iodsky.motorph.common.PageMapper;
+import com.iodsky.motorph.common.*;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -28,82 +26,87 @@ public class LeaveController {
     private final LeaveCreditMapper leaveCreditMapper;
 
     @PostMapping
-    public ResponseEntity<LeaveRequestDto> createLeave(@Valid @RequestBody LeaveRequestDto dto) {
-        LeaveRequest leaveRequest = leaveRequestService.createLeaveRequest(dto);
+    public ResponseEntity<ApiResponse<LeaveRequestDto>> createLeave(@Valid @RequestBody LeaveRequestDto dto) {
+        LeaveRequestDto leaveRequest = leaveRequestMapper.toDto(leaveRequestService.createLeaveRequest(dto));
 
-        return new ResponseEntity<>(leaveRequestMapper.toDto(leaveRequest), HttpStatus.CREATED);
+        return ResponseFactory.created("Leave request created successfully", leaveRequest);
     }
 
     @GetMapping()
-    public ResponseEntity<PageDto<LeaveRequestDto>> getLeaveRequests(
-            @RequestParam(defaultValue = "0") @Min(0) int pageNum,
+    public ResponseEntity<ApiResponse<List<LeaveRequestDto>>> getLeaveRequests(
+            @RequestParam(defaultValue = "0") @Min(0) int pageNo,
             @RequestParam(defaultValue = "10") @Min(1) @Max(100) int limit
     ) {
-        Page<LeaveRequest> page = leaveRequestService.getLeaveRequests(pageNum, limit);
+        Page<LeaveRequest> page = leaveRequestService.getLeaveRequests(pageNo, limit);
 
-        return ResponseEntity.ok(PageMapper.map(page, leaveRequestMapper::toDto));
+        List<LeaveRequestDto> leaveRequests = page.getContent().stream().map(leaveRequestMapper::toDto).toList();
+
+        return ResponseFactory.ok("Leave requests retrieved successfully", leaveRequests);
     }
 
     @GetMapping("/{leaveRequestId}")
-    public ResponseEntity<LeaveRequestDto> getLeaveRequestById(@PathVariable String leaveRequestId) {
-        LeaveRequest leaveRequest = leaveRequestService.getLeaveRequestById(leaveRequestId);
+    public ResponseEntity<ApiResponse<LeaveRequestDto>> getLeaveRequestById(@PathVariable String leaveRequestId) {
+        LeaveRequestDto leaveRequest = leaveRequestMapper.toDto(leaveRequestService.getLeaveRequestById(leaveRequestId));
 
-        return ResponseEntity.ok(leaveRequestMapper.toDto(leaveRequest));
+        return ResponseFactory.ok("Leave request retrieved successfully", leaveRequest);
     }
 
     @PutMapping("/{leaveRequestId}")
-    public ResponseEntity<LeaveRequestDto> updateLeaveRequest(
+    public ResponseEntity<ApiResponse<LeaveRequestDto>> updateLeaveRequest(
             @PathVariable String leaveRequestId,
             @Valid @RequestBody LeaveRequestDto dto) {
-        LeaveRequest leaveRequest = leaveRequestService.updateLeaveRequest(leaveRequestId, dto);
+        LeaveRequestDto leaveRequest = leaveRequestMapper.toDto(leaveRequestService.updateLeaveRequest(leaveRequestId, dto));
 
-        return ResponseEntity.ok(leaveRequestMapper.toDto(leaveRequest));
+        return ResponseFactory.ok("Leave request updated successfully", leaveRequest);
     }
 
     @PreAuthorize("hasRole('HR')")
     @PatchMapping("/{leaveRequestId}")
-    public ResponseEntity<LeaveRequestDto> updateLeaveStatus(
+    public ResponseEntity<ApiResponse<LeaveRequestDto>> updateLeaveStatus(
             @PathVariable String leaveRequestId,
             @Valid @RequestBody UpdateLeaveStatusDto dto) {
-        LeaveRequest leaveRequest = leaveRequestService.updateLeaveStatus(leaveRequestId, dto.getStatus());
+        LeaveRequestDto leaveRequest = leaveRequestMapper.toDto(leaveRequestService.updateLeaveStatus(leaveRequestId, dto.getStatus()));
 
-        return ResponseEntity.ok(leaveRequestMapper.toDto(leaveRequest));
+        return ResponseFactory.ok("Leave status updated successfully", leaveRequest);
     }
 
     @DeleteMapping("/{leaveRequestId}")
-    public ResponseEntity<Map<String, String>> deleteLeaveRequest(@PathVariable String leaveRequestId) {
+    public ResponseEntity<ApiResponse<DeleteResponse>> deleteLeaveRequest(@PathVariable String leaveRequestId) {
         leaveRequestService.deleteLeaveRequest(leaveRequestId);
-        return ResponseEntity.ok(Map.of("success", "true"));
+        DeleteResponse res = new DeleteResponse("Leave Request", leaveRequestId);
+        return ResponseFactory.ok("Leave request deleted successfully", res);
+
     }
 
     @PreAuthorize("hasRole('HR')")
     @PostMapping(value = "/credits", consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<List<LeaveCreditDto>> initializeEmployeeLeaveCredits(@Valid @RequestBody InitializeEmployeeLeaveCreditsDto dto) {
+    public ResponseEntity<ApiResponse<List<LeaveCreditDto>>> initializeEmployeeLeaveCredits(@Valid @RequestBody InitializeEmployeeLeaveCreditsDto dto) {
         List<LeaveCreditDto> leaveCredits = leaveCreditService.initializeEmployeeLeaveCredits(dto)
                 .stream()
                 .map(leaveCreditMapper::toDto)
                 .toList();
-        return new ResponseEntity<>(leaveCredits, HttpStatus.CREATED);
+        return ResponseFactory.created("Leave credits created successfully", leaveCredits);
     }
 
     @PreAuthorize("hasRole('HR')")
     @PostMapping(value = "/credits", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<Map<String, Integer>> importLeaveCredits(@RequestPart MultipartFile file) {
+    public ResponseEntity<ApiResponse<BatchResponse>> importLeaveCredits(@RequestPart MultipartFile file) {
         Integer count = leaveCreditService.importLeaveCredits(file);
-        return new ResponseEntity<>(Map.of("recordsCreated", count), HttpStatus.OK);
+        return ResponseFactory.ok("Leave credits imported successfully", new BatchResponse(count));
     }
 
     @GetMapping("/credits")
-    public ResponseEntity<List<LeaveCreditDto>> getLeaveCredits() {
+    public ResponseEntity<ApiResponse<List<LeaveCreditDto>>> getLeaveCredits() {
         List<LeaveCreditDto> credits = leaveCreditService.getLeaveCreditsByEmployeeId()
                 .stream().map(leaveCreditMapper::toDto).toList();
-        return ResponseEntity.ok(credits);
+        return ResponseFactory.ok("Leave credits retrieved successfully", credits);
     }
 
     @DeleteMapping("/credits/employee/{employeeId}")
-    public ResponseEntity<Map<String, String>> deleteLeaveCreditsByEmployeeId(@PathVariable Long employeeId) {
+    public ResponseEntity<ApiResponse<DeleteResponse>> deleteLeaveCreditsByEmployeeId(@PathVariable Long employeeId) {
         leaveCreditService.deleteLeaveCreditsByEmployeeId(employeeId);
-        return ResponseEntity.ok(Map.of("success", "true"));
+        DeleteResponse res = new DeleteResponse("Leave credit", employeeId);
+        return ResponseFactory.ok("Employee leave credit deleted successfully", res);
     }
 
 }
