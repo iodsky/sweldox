@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
 
@@ -17,22 +18,22 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleDuplicateFieldException(DuplicateFieldException ex, HttpServletRequest request) {
         ErrorResponse error = ErrorResponse.builder()
                 .timestamp(Instant.now())
-                .status(ex.getStatus().value())
+                .status(HttpStatus.BAD_REQUEST.value())
                 .message(ex.getMessage())
                 .path(request.getRequestURI())
                 .build();
-        return new ResponseEntity<>(error, ex.getStatus());
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }
 
-    @ExceptionHandler(ApiException.class)
-    public ResponseEntity<ErrorResponse> handleApiException(ApiException ex, HttpServletRequest request) {
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<ErrorResponse> handleResponseStatusException(ResponseStatusException ex, HttpServletRequest request) {
         ErrorResponse error = ErrorResponse.builder()
                 .timestamp(Instant.now())
-                .status(ex.getStatus().value())
-                .message(ex.getMessage())
+                .status(ex.getStatusCode().value())
+                .message(ex.getReason())
                 .path(request.getRequestURI())
                 .build();
-        return new ResponseEntity<>(error, ex.getStatus());
+        return new ResponseEntity<>(error, ex.getStatusCode());
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

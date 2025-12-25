@@ -1,6 +1,5 @@
 package com.iodsky.sweldox.attendance;
 
-import com.iodsky.sweldox.common.exception.ApiException;
 import com.iodsky.sweldox.common.DateRange;
 import com.iodsky.sweldox.common.DateRangeResolver;
 import com.iodsky.sweldox.employee.EmployeeService;
@@ -13,6 +12,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -54,7 +54,7 @@ public class AttendanceService {
 
             // Authorization rule
             if (!isHr && !employeeId.equals(currentEmployeeId)) {
-                throw new ApiException(HttpStatus.FORBIDDEN, "You don't have the permissions to access this resource");
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You don't have the permissions to access this resource");
             }
         }
 
@@ -69,13 +69,13 @@ public class AttendanceService {
 
         // Prevent early clock-in
         if (clockInTime.isBefore(EARLIEST_START_SHIFT)) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "Cannot clock in before " + EARLIEST_START_SHIFT);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot clock in before " + EARLIEST_START_SHIFT);
         }
 
         // Check for existing attendance record
         Optional<Attendance> exists = attendanceRepository.findByEmployee_IdAndDate(employeeId, attendanceDate);
         if (exists.isPresent()) {
-            throw new ApiException(HttpStatus.CONFLICT, "Attendance record already exists");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Attendance record already exists");
         }
 
         // Build attendance
@@ -100,30 +100,30 @@ public class AttendanceService {
 
         Attendance attendance = attendanceRepository.findById(id)
                 // Not yet clocked in
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Attendance not found with id: " + id));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Attendance not found with id: " + id));
 
         long currentEmpId = user.getEmployee().getId();
         long employeeId = attendance.getEmployee().getId();
 
         if (!isHr && employeeId != currentEmpId) {
-            throw new ApiException(HttpStatus.FORBIDDEN, "You don't have the permissions to access this resource");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You don't have the permissions to access this resource");
         }
 
         if (attendanceDto == null) {
             if (attendance.getTimeOut() != null && !attendance.getTimeOut().equals(LocalTime.MIN)) {
-                throw new ApiException(HttpStatus.CONFLICT, "You have already clocked out for the day.");
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "You have already clocked out for the day.");
             }
 
             LocalTime clockOut = LocalTime.now();
             if (clockOut.isBefore(attendance.getTimeIn())) {
-                throw new ApiException(HttpStatus.BAD_REQUEST, "Clock-out time cannot be before clock-in time");
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Clock-out time cannot be before clock-in time");
             }
 
             attendance.setTimeOut(clockOut);
         }
         else {
             if (!isHr) {
-                throw new ApiException(HttpStatus.FORBIDDEN, "You don't have the permissions to access this resource");
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You don't have the permissions to access this resource");
             }
 
             if (attendanceDto.getTimeIn() != null) {
@@ -183,7 +183,7 @@ public class AttendanceService {
         }
 
         if (!isAdmin && !employeeId.equals(currentEmployeeId)) {
-            throw new ApiException(HttpStatus.FORBIDDEN, "You don't have permission to access this resource");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You don't have permission to access this resource");
         }
 
         Pageable pageable = PageRequest.of(page, limit);

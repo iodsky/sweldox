@@ -4,7 +4,6 @@ import com.iodsky.sweldox.attendance.Attendance;
 import com.iodsky.sweldox.attendance.AttendanceService;
 import com.iodsky.sweldox.common.DateRange;
 import com.iodsky.sweldox.common.DateRangeResolver;
-import com.iodsky.sweldox.common.exception.ApiException;
 import com.iodsky.sweldox.employee.EmployeeService;
 import com.iodsky.sweldox.employee.Compensation;
 import com.iodsky.sweldox.employee.Employee;
@@ -27,6 +26,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -223,10 +223,10 @@ class PayrollServiceTest {
             when(payrollRepository.existsByEmployee_IdAndPeriodStartDateAndPeriodEndDate(
                     employee.getId(), PERIOD_START, PERIOD_END)).thenReturn(true);
 
-            ApiException ex = assertThrows(ApiException.class,
+            ResponseStatusException ex = assertThrows(ResponseStatusException.class,
                     () -> payrollService.createPayroll(employee.getId(), PERIOD_START, PERIOD_END, PAY_DATE));
 
-            assertEquals(HttpStatus.CONFLICT, ex.getStatus());
+            assertEquals(HttpStatus.CONFLICT, ex.getStatusCode());
             verify(payrollRepository, never()).save(any(Payroll.class));
         }
 
@@ -425,7 +425,7 @@ class PayrollServiceTest {
             when(payrollRepository.existsByEmployee_IdAndPeriodStartDateAndPeriodEndDate(
                     anyLong(), eq(PERIOD_START), eq(PERIOD_END))).thenReturn(false);
             when(employeeService.getEmployeeById(eq(1L))).thenReturn(employee);
-            when(employeeService.getEmployeeById(eq(2L))).thenThrow(new ApiException(HttpStatus.NOT_FOUND, "Employee not found"));
+            when(employeeService.getEmployeeById(eq(2L))).thenThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Employee not found"));
             when(employeeService.getEmployeeById(eq(3L))).thenReturn(employee);
             when(attendanceService.getEmployeeAttendances(anyLong(), eq(PERIOD_START), eq(PERIOD_END)))
                     .thenReturn(attendances);
@@ -478,20 +478,20 @@ class PayrollServiceTest {
             payroll.setEmployee(employee);
             when(payrollRepository.findById(payroll.getId())).thenReturn(Optional.of(payroll));
 
-            ApiException ex = assertThrows(ApiException.class,
+            ResponseStatusException ex = assertThrows(ResponseStatusException.class,
                     () -> payrollService.getPayrollById(payroll.getId()));
 
-            assertEquals(HttpStatus.FORBIDDEN, ex.getStatus());
+            assertEquals(HttpStatus.FORBIDDEN, ex.getStatusCode());
         }
 
         @Test
         void shouldThrowUnauthorizedWhenPrincipalIsNotUser() {
-            when(userService.getAuthenticatedUser()).thenThrow(new ApiException(HttpStatus.UNAUTHORIZED, "Unauthorized"));
+            when(userService.getAuthenticatedUser()).thenThrow(new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized"));
 
-            ApiException ex = assertThrows(ApiException.class,
+            ResponseStatusException ex = assertThrows(ResponseStatusException.class,
                     () -> payrollService.getPayrollById(payroll.getId()));
 
-            assertEquals(HttpStatus.UNAUTHORIZED, ex.getStatus());
+            assertEquals(HttpStatus.UNAUTHORIZED, ex.getStatusCode());
             verify(payrollRepository, never()).findById(any());
         }
 
@@ -501,10 +501,10 @@ class PayrollServiceTest {
             UUID nonExistentId = UUID.randomUUID();
             when(payrollRepository.findById(nonExistentId)).thenReturn(Optional.empty());
 
-            ApiException ex = assertThrows(ApiException.class,
+            ResponseStatusException ex = assertThrows(ResponseStatusException.class,
                     () -> payrollService.getPayrollById(nonExistentId));
 
-            assertEquals(HttpStatus.NOT_FOUND, ex.getStatus());
+            assertEquals(HttpStatus.NOT_FOUND, ex.getStatusCode());
         }
 
         @Test
@@ -513,10 +513,10 @@ class PayrollServiceTest {
             payroll.setEmployee(otherEmployee);
             when(payrollRepository.findById(payroll.getId())).thenReturn(Optional.of(payroll));
 
-            ApiException ex = assertThrows(ApiException.class,
+            ResponseStatusException ex = assertThrows(ResponseStatusException.class,
                     () -> payrollService.getPayrollById(payroll.getId()));
 
-            assertEquals(HttpStatus.FORBIDDEN, ex.getStatus());
+            assertEquals(HttpStatus.FORBIDDEN, ex.getStatusCode());
         }
 
         @Test
@@ -525,10 +525,10 @@ class PayrollServiceTest {
             payroll.setEmployee(employee);
             when(payrollRepository.findById(payroll.getId())).thenReturn(Optional.of(payroll));
 
-            ApiException ex = assertThrows(ApiException.class,
+            ResponseStatusException ex = assertThrows(ResponseStatusException.class,
                     () -> payrollService.getPayrollById(payroll.getId()));
 
-            assertEquals(HttpStatus.FORBIDDEN, ex.getStatus());
+            assertEquals(HttpStatus.FORBIDDEN, ex.getStatusCode());
         }
     }
 
@@ -629,11 +629,11 @@ class PayrollServiceTest {
 
         @Test
         void shouldThrowUnauthorizedWhenPrincipalIsNotUser() {
-            when(userService.getAuthenticatedUser()).thenThrow(new ApiException(HttpStatus.UNAUTHORIZED, "Unauthorized"));
+            when(userService.getAuthenticatedUser()).thenThrow(new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized"));
 
-            ApiException ex = assertThrows(ApiException.class,
+            ResponseStatusException ex = assertThrows(ResponseStatusException.class,
                     () -> payrollService.getAllEmployeePayroll(0, 10, PERIOD_START, PERIOD_END));
-            assertEquals(HttpStatus.UNAUTHORIZED, ex.getStatus());
+            assertEquals(HttpStatus.UNAUTHORIZED, ex.getStatusCode());
 
             verify(payrollRepository, never()).findAllByEmployee_IdAndPeriodStartDateBetween(
                     anyLong(), any(), any(), any());

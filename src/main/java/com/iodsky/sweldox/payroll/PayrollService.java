@@ -4,7 +4,6 @@ import com.iodsky.sweldox.attendance.Attendance;
 import com.iodsky.sweldox.attendance.AttendanceService;
 import com.iodsky.sweldox.common.DateRange;
 import com.iodsky.sweldox.common.DateRangeResolver;
-import com.iodsky.sweldox.common.exception.ApiException;
 import com.iodsky.sweldox.employee.EmployeeService;
 import com.iodsky.sweldox.employee.Employee;
 import com.iodsky.sweldox.security.user.User;
@@ -17,6 +16,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -43,7 +43,7 @@ public class PayrollService {
                     "Payroll already exists for employee {} for period {} to {}. Skipping...",
                     employeeId, periodStartDate, periodEndDate
             );
-            throw new ApiException(
+            throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
                     String.format(
                         "Payroll already exists for employee %s for period %s to %s.",
@@ -190,11 +190,11 @@ public class PayrollService {
         User user = userService.getAuthenticatedUser();
 
         Payroll payroll = payrollRepository.findById(payrollId)
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Payroll " + payrollId + " not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Payroll " + payrollId + " not found"));
 
         if (!user.getUserRole().getRole().equals("PAYROLL") ||
                 !payroll.getEmployee().getId().equals(user.getEmployee().getId())) {
-            throw new ApiException(HttpStatus.FORBIDDEN, "You don't have permission to access this resource");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You don't have permission to access this resource");
         }
 
         return payroll;

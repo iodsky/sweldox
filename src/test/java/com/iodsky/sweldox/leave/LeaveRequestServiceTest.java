@@ -1,6 +1,5 @@
 package com.iodsky.sweldox.leave;
 
-import com.iodsky.sweldox.common.exception.ApiException;
 import com.iodsky.sweldox.employee.Employee;
 import com.iodsky.sweldox.security.user.User;
 import com.iodsky.sweldox.security.user.UserRole;
@@ -18,6 +17,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -128,12 +128,12 @@ class LeaveRequestServiceTest {
 
         @Test
         void shouldThrowUnauthorizedWhenPrincipalIsNotUser() {
-            when(userService.getAuthenticatedUser()).thenThrow(new ApiException(HttpStatus.UNAUTHORIZED, "Unauthorized"));
+            when(userService.getAuthenticatedUser()).thenThrow(new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized"));
 
-            ApiException ex = assertThrows(ApiException.class, () ->
+            ResponseStatusException ex = assertThrows(ResponseStatusException.class, () ->
                     leaveRequestService.createLeaveRequest(leaveRequestDto));
 
-            assertEquals(HttpStatus.UNAUTHORIZED, ex.getStatus());
+            assertEquals(HttpStatus.UNAUTHORIZED, ex.getStatusCode());
         }
 
         @Test
@@ -149,10 +149,10 @@ class LeaveRequestServiceTest {
                     eq(1L), anyList(), any(), any()))
                     .thenReturn(false);
 
-            ApiException ex = assertThrows(ApiException.class, () ->
+            ResponseStatusException ex = assertThrows(ResponseStatusException.class, () ->
                     leaveRequestService.createLeaveRequest(leaveRequestDto));
 
-            assertEquals(HttpStatus.BAD_REQUEST, ex.getStatus());
+            assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
         }
 
         @Test
@@ -162,10 +162,10 @@ class LeaveRequestServiceTest {
             leaveRequestDto.setStartDate(LocalDate.of(2025, 12, 20));
             leaveRequestDto.setEndDate(LocalDate.of(2025, 12, 15));
 
-            ApiException ex = assertThrows(ApiException.class, () ->
+            ResponseStatusException ex = assertThrows(ResponseStatusException.class, () ->
                     leaveRequestService.createLeaveRequest(leaveRequestDto));
 
-            assertEquals(HttpStatus.BAD_REQUEST, ex.getStatus());
+            assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
         }
 
         @Test
@@ -175,11 +175,11 @@ class LeaveRequestServiceTest {
             leaveRequestDto.setStartDate(LocalDate.of(2025, 12, 13)); // Saturday
             leaveRequestDto.setEndDate(LocalDate.of(2025, 12, 16));
 
-            ApiException ex = assertThrows(ApiException.class, () ->
+            ResponseStatusException ex = assertThrows(ResponseStatusException.class, () ->
                     leaveRequestService.createLeaveRequest(leaveRequestDto));
 
-            assertEquals(HttpStatus.BAD_REQUEST, ex.getStatus());
-            assertEquals("Start date must be a weekday", ex.getMessage());
+            assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+            assertEquals("Start date must be a weekday", ex.getReason());
         }
 
         @Test
@@ -189,11 +189,11 @@ class LeaveRequestServiceTest {
             leaveRequestDto.setStartDate(LocalDate.of(2025, 12, 16));
             leaveRequestDto.setEndDate(LocalDate.of(2025, 12, 20)); // Saturday
 
-            ApiException ex = assertThrows(ApiException.class, () ->
+            ResponseStatusException ex = assertThrows(ResponseStatusException.class, () ->
                     leaveRequestService.createLeaveRequest(leaveRequestDto));
 
-            assertEquals(HttpStatus.BAD_REQUEST, ex.getStatus());
-            assertEquals("End date must be a weekday", ex.getMessage());
+            assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+            assertEquals("End date must be a weekday", ex.getReason());
         }
 
         @Test
@@ -204,11 +204,11 @@ class LeaveRequestServiceTest {
                     eq(1L), any(), any()))
                     .thenReturn(true);
 
-            ApiException ex = assertThrows(ApiException.class, () ->
+            ResponseStatusException ex = assertThrows(ResponseStatusException.class, () ->
                     leaveRequestService.createLeaveRequest(leaveRequestDto));
 
-            assertEquals(HttpStatus.CONFLICT, ex.getStatus());
-            assertEquals("Duplicate leave request", ex.getMessage());
+            assertEquals(HttpStatus.CONFLICT, ex.getStatusCode());
+            assertEquals("Duplicate leave request", ex.getReason());
         }
 
         @Test
@@ -221,11 +221,11 @@ class LeaveRequestServiceTest {
                     eq(1L), anyList(), any(), any()))
                     .thenReturn(true);
 
-            ApiException ex = assertThrows(ApiException.class, () ->
+            ResponseStatusException ex = assertThrows(ResponseStatusException.class, () ->
                     leaveRequestService.createLeaveRequest(leaveRequestDto));
 
-            assertEquals(HttpStatus.BAD_REQUEST, ex.getStatus());
-            assertTrue(ex.getMessage().contains("overlaps"));
+            assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+            assertTrue(ex.getReason().contains("overlaps"));
         }
 
         @Test
@@ -234,11 +234,11 @@ class LeaveRequestServiceTest {
 
             leaveRequestDto.setLeaveType("INVALID_TYPE");
 
-            ApiException ex = assertThrows(ApiException.class, () ->
+            ResponseStatusException ex = assertThrows(ResponseStatusException.class, () ->
                     leaveRequestService.createLeaveRequest(leaveRequestDto));
 
-            assertEquals(HttpStatus.BAD_REQUEST, ex.getStatus());
-            assertTrue(ex.getMessage().contains("Invalid leave type"));
+            assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+            assertTrue(ex.getReason().contains("Invalid leave type"));
         }
     }
 
@@ -276,12 +276,12 @@ class LeaveRequestServiceTest {
 
         @Test
         void shouldThrowUnauthorizedWhenPrincipalIsNotUser() {
-            when(userService.getAuthenticatedUser()).thenThrow(new ApiException(HttpStatus.UNAUTHORIZED, "Unauthorized"));
+            when(userService.getAuthenticatedUser()).thenThrow(new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized"));
 
-            ApiException ex = assertThrows(ApiException.class, () ->
+            ResponseStatusException ex = assertThrows(ResponseStatusException.class, () ->
                     leaveRequestService.getLeaveRequests(0, 10));
 
-            assertEquals(HttpStatus.UNAUTHORIZED, ex.getStatus());
+            assertEquals(HttpStatus.UNAUTHORIZED, ex.getStatusCode());
         }
     }
 
@@ -304,11 +304,11 @@ class LeaveRequestServiceTest {
             when(leaveRequestRepository.findById("LR-2025-999"))
                     .thenReturn(Optional.empty());
 
-            ApiException ex = assertThrows(ApiException.class, () ->
+            ResponseStatusException ex = assertThrows(ResponseStatusException.class, () ->
                     leaveRequestService.getLeaveRequestById("LR-2025-999"));
 
-            assertEquals(HttpStatus.NOT_FOUND, ex.getStatus());
-            assertTrue(ex.getMessage().contains("LR-2025-999"));
+            assertEquals(HttpStatus.NOT_FOUND, ex.getStatusCode());
+            assertTrue(ex.getReason().contains("LR-2025-999"));
         }
     }
 
@@ -356,10 +356,10 @@ class LeaveRequestServiceTest {
             when(leaveRequestRepository.findById("LR-2025-001"))
                     .thenReturn(Optional.of(leaveRequest));
 
-            ApiException ex = assertThrows(ApiException.class, () ->
+            ResponseStatusException ex = assertThrows(ResponseStatusException.class, () ->
                     leaveRequestService.updateLeaveRequest("LR-2025-001", leaveRequestDto));
 
-            assertEquals(HttpStatus.FORBIDDEN, ex.getStatus());
+            assertEquals(HttpStatus.FORBIDDEN, ex.getStatusCode());
         }
 
         @Test
@@ -370,11 +370,11 @@ class LeaveRequestServiceTest {
             when(leaveRequestRepository.findById("LR-2025-001"))
                     .thenReturn(Optional.of(leaveRequest));
 
-            ApiException ex = assertThrows(ApiException.class, () ->
+            ResponseStatusException ex = assertThrows(ResponseStatusException.class, () ->
                     leaveRequestService.updateLeaveRequest("LR-2025-001", leaveRequestDto));
 
-            assertEquals(HttpStatus.BAD_REQUEST, ex.getStatus());
-            assertTrue(ex.getMessage().contains("Cannot delete processed"));
+            assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+            assertTrue(ex.getReason().contains("Cannot delete processed"));
         }
     }
 
@@ -417,11 +417,11 @@ class LeaveRequestServiceTest {
             when(leaveRequestRepository.findById("LR-2025-001"))
                     .thenReturn(Optional.of(leaveRequest));
 
-            ApiException ex = assertThrows(ApiException.class, () ->
+            ResponseStatusException ex = assertThrows(ResponseStatusException.class, () ->
                     leaveRequestService.updateLeaveStatus("LR-2025-001", LeaveStatus.APPROVED));
 
-            assertEquals(HttpStatus.BAD_REQUEST, ex.getStatus());
-            assertTrue(ex.getMessage().contains("already been processed"));
+            assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+            assertTrue(ex.getReason().contains("already been processed"));
         }
 
         @Test
@@ -432,11 +432,11 @@ class LeaveRequestServiceTest {
             when(leaveCreditService.getLeaveCreditByEmployeeIdAndType(eq(1L), eq(LeaveType.VACATION)))
                     .thenReturn(leaveCredit);
 
-            ApiException ex = assertThrows(ApiException.class, () ->
+            ResponseStatusException ex = assertThrows(ResponseStatusException.class, () ->
                     leaveRequestService.updateLeaveStatus("LR-2025-001", LeaveStatus.APPROVED));
 
-            assertEquals(HttpStatus.BAD_REQUEST, ex.getStatus());
-            assertTrue(ex.getMessage().contains("Insufficient credits"));
+            assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+            assertTrue(ex.getReason().contains("Insufficient credits"));
         }
 
         @Test
@@ -450,11 +450,11 @@ class LeaveRequestServiceTest {
             when(leaveRequestRepository.save(any(LeaveRequest.class)))
                     .thenThrow(new OptimisticLockException());
 
-            ApiException ex = assertThrows(ApiException.class, () ->
+            ResponseStatusException ex = assertThrows(ResponseStatusException.class, () ->
                     leaveRequestService.updateLeaveStatus("LR-2025-001", LeaveStatus.APPROVED));
 
-            assertEquals(HttpStatus.BAD_REQUEST, ex.getStatus());
-            assertTrue(ex.getMessage().contains("modified by another process"));
+            assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+            assertTrue(ex.getReason().contains("modified by another process"));
         }
     }
 
@@ -494,10 +494,10 @@ class LeaveRequestServiceTest {
             when(leaveRequestRepository.findById("LR-2025-001"))
                     .thenReturn(Optional.of(leaveRequest));
 
-            ApiException ex = assertThrows(ApiException.class, () ->
+            ResponseStatusException ex = assertThrows(ResponseStatusException.class, () ->
                     leaveRequestService.deleteLeaveRequest("LR-2025-001"));
 
-            assertEquals(HttpStatus.FORBIDDEN, ex.getStatus());
+            assertEquals(HttpStatus.FORBIDDEN, ex.getStatusCode());
         }
 
         @Test
@@ -508,11 +508,11 @@ class LeaveRequestServiceTest {
             when(leaveRequestRepository.findById("LR-2025-001"))
                     .thenReturn(Optional.of(leaveRequest));
 
-            ApiException ex = assertThrows(ApiException.class, () ->
+            ResponseStatusException ex = assertThrows(ResponseStatusException.class, () ->
                     leaveRequestService.deleteLeaveRequest("LR-2025-001"));
 
-            assertEquals(HttpStatus.BAD_REQUEST, ex.getStatus());
-            assertTrue(ex.getMessage().contains("Cannot delete processed"));
+            assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+            assertTrue(ex.getReason().contains("Cannot delete processed"));
         }
     }
 }

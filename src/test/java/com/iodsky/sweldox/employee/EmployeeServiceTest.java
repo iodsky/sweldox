@@ -1,6 +1,5 @@
 package com.iodsky.sweldox.employee;
 
-import com.iodsky.sweldox.common.exception.ApiException;
 import com.iodsky.sweldox.common.exception.DuplicateFieldException;
 import com.iodsky.sweldox.organization.Department;
 import com.iodsky.sweldox.organization.DepartmentService;
@@ -23,6 +22,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -202,10 +202,10 @@ class EmployeeServiceTest {
             when(context.getAuthentication()).thenReturn(authentication);
             SecurityContextHolder.setContext(context);
 
-            ApiException ex = assertThrows(ApiException.class,
+            ResponseStatusException ex = assertThrows(ResponseStatusException.class,
                     () -> employeeService.getAuthenticatedEmployee());
 
-            assertEquals(HttpStatus.UNAUTHORIZED, ex.getStatus());
+            assertEquals(HttpStatus.UNAUTHORIZED, ex.getStatusCode());
         }
     }
 
@@ -224,10 +224,10 @@ class EmployeeServiceTest {
         void shouldThrowNotFoundWhenEmployeeDoesNotExist() {
             when(employeeRepository.findById(1L)).thenReturn(Optional.empty());
 
-            ApiException ex = assertThrows(ApiException.class,
+            ResponseStatusException ex = assertThrows(ResponseStatusException.class,
                     () -> employeeService.getEmployeeById(1L));
 
-            assertEquals(HttpStatus.NOT_FOUND, ex.getStatus());
+            assertEquals(HttpStatus.NOT_FOUND, ex.getStatusCode());
         }
     }
 
@@ -267,10 +267,10 @@ class EmployeeServiceTest {
         void shouldThrowNotFoundWhenUpdatingNonexistentEmployee() {
             when(employeeRepository.findById(99L)).thenReturn(Optional.empty());
 
-            ApiException ex = assertThrows(ApiException.class,
+            ResponseStatusException ex = assertThrows(ResponseStatusException.class,
                     () -> employeeService.updateEmployeeById(99L, request));
 
-            assertEquals(HttpStatus.NOT_FOUND, ex.getStatus());
+            assertEquals(HttpStatus.NOT_FOUND, ex.getStatusCode());
         }
     }
 
@@ -290,10 +290,10 @@ class EmployeeServiceTest {
         void shouldThrowNotFoundWhenDeletingNonexistentEmployee() {
             when(employeeRepository.findById(1L)).thenReturn(Optional.empty());
 
-            ApiException ex = assertThrows(ApiException.class,
+            ResponseStatusException ex = assertThrows(ResponseStatusException.class,
                     () -> employeeService.deleteEmployeeById(1L));
 
-            assertEquals(HttpStatus.NOT_FOUND, ex.getStatus());
+            assertEquals(HttpStatus.NOT_FOUND, ex.getStatusCode());
         }
     }
 }

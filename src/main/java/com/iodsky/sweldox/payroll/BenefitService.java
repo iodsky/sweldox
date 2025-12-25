@@ -1,9 +1,9 @@
 package com.iodsky.sweldox.payroll;
 
-import com.iodsky.sweldox.common.exception.ApiException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 @Service
 @RequiredArgsConstructor
@@ -13,7 +13,7 @@ public class BenefitService {
 
     public BenefitType getBenefitTypeById(String id) {
         return benefitTypeRepository.findById(id)
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Benefit type " + id + " not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Benefit type " + id + " not found"));
     }
 
 }

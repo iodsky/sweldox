@@ -1,6 +1,5 @@
 package com.iodsky.sweldox.security.user;
 
-import com.iodsky.sweldox.common.exception.ApiException;
 import com.iodsky.sweldox.common.exception.CsvImportException;
 import com.iodsky.sweldox.csvimport.CsvResult;
 import com.iodsky.sweldox.csvimport.CsvService;
@@ -18,6 +17,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
 import java.util.LinkedHashSet;
@@ -38,7 +38,7 @@ public class UserService implements UserDetailsService {
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         return userRepository.findByEmail(username)
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "User " + username + " not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User " + username + " not found"));
     }
 
     public User createUser(UserRequest userRequest) {
@@ -92,7 +92,7 @@ public class UserService implements UserDetailsService {
         }
 
         if (!userRoleRepository.existsByRole(role)) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "Invalid " + role);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid " + role);
         }
 
         return userRepository.findUserByUserRole_Role(role, pageable);
@@ -105,12 +105,12 @@ public class UserService implements UserDetailsService {
             return user;
         }
 
-        throw new ApiException(HttpStatus.UNAUTHORIZED, "No authenticated user found");
+        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "No authenticated user found");
     }
 
     private UserRole getUserRole(String role) {
         return userRoleRepository.findById(role)
-                .orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST, "Invalid role " + role));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid role " + role));
     }
 
 }

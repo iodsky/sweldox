@@ -1,6 +1,7 @@
 package com.iodsky.sweldox.employee;
 
-import com.iodsky.sweldox.common.exception.*;
+import com.iodsky.sweldox.common.exception.CsvImportException;
+import com.iodsky.sweldox.common.exception.DuplicateFieldException;
 import com.iodsky.sweldox.csvimport.CsvResult;
 import com.iodsky.sweldox.csvimport.CsvService;
 import com.iodsky.sweldox.organization.Department;
@@ -21,6 +22,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
 import java.util.*;
@@ -96,11 +98,11 @@ public class EmployeeService {
             return user.getEmployee();
         }
 
-        throw new ApiException(HttpStatus.UNAUTHORIZED, "Authenticated user not found");
+        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authenticated user not found");
     }
 
     public Employee getEmployeeById(Long id) {
-        return employeeRepository.findById(id).orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Employee " + id + " not found"));
+        return employeeRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Employee " + id + " not found"));
     }
 
     public Employee updateEmployeeById(Long id, EmployeeRequest request) {
@@ -135,7 +137,7 @@ public class EmployeeService {
 
     public void deleteEmployeeById(Long id) {
         employeeRepository.findById(id).ifPresentOrElse(employeeRepository::delete, () -> {
-            throw new ApiException(HttpStatus.NOT_FOUND, "Employee " + id + " not found");
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Employee " + id + " not found");
         });
     }
 
@@ -208,7 +210,7 @@ public class EmployeeService {
                     if (supervisor == null) {
                         try {
                             supervisor = getEmployeeById(supervisorId);
-                        } catch (ApiException e) {
+                        } catch (ResponseStatusException e) {
                             continue;
                         }
                     }

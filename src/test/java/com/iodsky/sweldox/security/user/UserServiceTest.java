@@ -1,6 +1,5 @@
 package com.iodsky.sweldox.security.user;
 
-import com.iodsky.sweldox.common.exception.ApiException;
 import com.iodsky.sweldox.common.exception.CsvImportException;
 import com.iodsky.sweldox.csvimport.CsvResult;
 import com.iodsky.sweldox.csvimport.CsvService;
@@ -21,6 +20,7 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -83,19 +83,19 @@ class UserServiceTest {
         void shouldThrowNotFoundExceptionWhenUserDoesNotExist() {
             when(userRepository.findByEmail("missing@example.com")).thenReturn(Optional.empty());
 
-            ApiException ex = assertThrows(ApiException.class,
+            ResponseStatusException ex = assertThrows(ResponseStatusException.class,
                     () -> userService.loadUserByUsername("missing@example.com"));
 
-            assertEquals(HttpStatus.NOT_FOUND, ex.getStatus());
-            assertEquals("User missing@example.com not found", ex.getMessage());
+            assertEquals(HttpStatus.NOT_FOUND, ex.getStatusCode());
+            assertEquals("User missing@example.com not found", ex.getReason());
         }
 
         @Test
         void shouldHandleNullUsernameGracefully() {
             when(userRepository.findByEmail(null)).thenReturn(Optional.empty());
 
-            ApiException ex = assertThrows(ApiException.class, () -> userService.loadUserByUsername(null));
-            assertEquals(HttpStatus.NOT_FOUND, ex.getStatus());
+            ResponseStatusException ex = assertThrows(ResponseStatusException.class, () -> userService.loadUserByUsername(null));
+            assertEquals(HttpStatus.NOT_FOUND, ex.getStatusCode());
         }
     }
 
@@ -134,8 +134,8 @@ class UserServiceTest {
         void shouldThrowBadRequestWhenInvalidRoleProvided() {
             when(userRoleRepository.existsByRole("INVALID")).thenReturn(false);
 
-            ApiException ex = assertThrows(ApiException.class, () -> userService.getAllUsers(0, 10, "INVALID"));
-            assertEquals(HttpStatus.BAD_REQUEST, ex.getStatus());
+            ResponseStatusException ex = assertThrows(ResponseStatusException.class, () -> userService.getAllUsers(0, 10, "INVALID"));
+            assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
         }
     }
 
@@ -162,10 +162,10 @@ class UserServiceTest {
         @Test
         void shouldThrowNotFoundWhenEmployeeDoesNotExist() {
             when(userMapper.toEntity(any(UserRequest.class))).thenReturn(user);
-            when(employeeService.getEmployeeById(1L)).thenThrow(new ApiException(HttpStatus.NOT_FOUND, "Employee not found"));
+            when(employeeService.getEmployeeById(1L)).thenThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Employee not found"));
 
-            ApiException ex = assertThrows(ApiException.class, () -> userService.createUser(userRequest));
-            assertEquals(HttpStatus.NOT_FOUND, ex.getStatus());
+            ResponseStatusException ex = assertThrows(ResponseStatusException.class, () -> userService.createUser(userRequest));
+            assertEquals(HttpStatus.NOT_FOUND, ex.getStatusCode());
         }
 
         @Test
@@ -174,11 +174,11 @@ class UserServiceTest {
             when(employeeService.getEmployeeById(1L)).thenReturn(employee);
             when(userRoleRepository.findById("HR")).thenReturn(Optional.empty());
 
-            ApiException ex = assertThrows(ApiException.class,
+            ResponseStatusException ex = assertThrows(ResponseStatusException.class,
                     () -> userService.createUser(userRequest));
 
-            assertEquals(HttpStatus.BAD_REQUEST, ex.getStatus());
-            assertEquals("Invalid role HR", ex.getMessage());
+            assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+            assertEquals("Invalid role HR", ex.getReason());
         }
 
         @Test

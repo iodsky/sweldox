@@ -1,6 +1,5 @@
 package com.iodsky.sweldox.leave;
 
-import com.iodsky.sweldox.common.exception.ApiException;
 import com.iodsky.sweldox.common.exception.CsvImportException;
 import com.iodsky.sweldox.csvimport.CsvResult;
 import com.iodsky.sweldox.csvimport.CsvService;
@@ -20,6 +19,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -193,10 +193,10 @@ class LeaveCreditServiceTest {
             when(leaveCreditRepository.existsByEmployee_IdAndFiscalYear(1L, "2025-2026"))
                     .thenReturn(true);
 
-            ApiException ex = assertThrows(ApiException.class, () ->
+            ResponseStatusException ex = assertThrows(ResponseStatusException.class, () ->
                     leaveCreditService.initializeEmployeeLeaveCredits(dto));
 
-            assertEquals(HttpStatus.CONFLICT, ex.getStatus());
+            assertEquals(HttpStatus.CONFLICT, ex.getStatusCode());
             assertTrue(ex.getMessage().contains("Leave credits already exists"));
             assertTrue(ex.getMessage().contains("employee 1"));
 
@@ -212,12 +212,12 @@ class LeaveCreditServiceTest {
             dto.setFiscalYear("2025-2026");
 
             when(employeeService.getEmployeeById(999L))
-                    .thenThrow(new ApiException(HttpStatus.NOT_FOUND, "Employee not found: 999"));
+                    .thenThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Employee not found: 999"));
 
-            ApiException ex = assertThrows(ApiException.class, () ->
+            ResponseStatusException ex = assertThrows(ResponseStatusException.class, () ->
                     leaveCreditService.initializeEmployeeLeaveCredits(dto));
 
-            assertEquals(HttpStatus.NOT_FOUND, ex.getStatus());
+            assertEquals(HttpStatus.NOT_FOUND, ex.getStatusCode());
             verify(employeeService).getEmployeeById(999L);
             verify(leaveCreditRepository, never()).existsByEmployee_IdAndFiscalYear(any(), any());
             verify(leaveCreditRepository, never()).saveAll(any());
@@ -314,10 +314,10 @@ class LeaveCreditServiceTest {
             when(leaveCreditRepository.findByEmployee_IdAndType(eq(1L), eq(LeaveType.VACATION)))
                     .thenReturn(Optional.empty());
 
-            ApiException ex = assertThrows(ApiException.class, () ->
+            ResponseStatusException ex = assertThrows(ResponseStatusException.class, () ->
                     leaveCreditService.getLeaveCreditByEmployeeIdAndType(1L, LeaveType.VACATION));
 
-            assertEquals(HttpStatus.NOT_FOUND, ex.getStatus());
+            assertEquals(HttpStatus.NOT_FOUND, ex.getStatusCode());
             assertTrue(ex.getMessage().contains("VACATION"));
             assertTrue(ex.getMessage().contains("employeeId: 1"));
         }
@@ -351,10 +351,10 @@ class LeaveCreditServiceTest {
             when(context.getAuthentication()).thenReturn(authentication);
             SecurityContextHolder.setContext(context);
 
-            ApiException ex = assertThrows(ApiException.class, () ->
+            ResponseStatusException ex = assertThrows(ResponseStatusException.class, () ->
                     leaveCreditService.getLeaveCreditsByEmployeeId());
 
-            assertEquals(HttpStatus.UNAUTHORIZED, ex.getStatus());
+            assertEquals(HttpStatus.UNAUTHORIZED, ex.getStatusCode());
         }
     }
 
@@ -393,10 +393,10 @@ class LeaveCreditServiceTest {
                     .credits(8.0)
                     .build();
 
-            ApiException ex = assertThrows(ApiException.class, () ->
+            ResponseStatusException ex = assertThrows(ResponseStatusException.class, () ->
                     leaveCreditService.updateLeaveCredit(creditId, updatedCredit));
 
-            assertEquals(HttpStatus.NOT_FOUND, ex.getStatus());
+            assertEquals(HttpStatus.NOT_FOUND, ex.getStatusCode());
         }
     }
 
@@ -469,10 +469,10 @@ class LeaveCreditServiceTest {
                     .thenReturn(csvResults);
             when(employeeService.getEmployeeById(1L)).thenReturn(employee);
 
-            ApiException ex = assertThrows(ApiException.class, () ->
+            ResponseStatusException ex = assertThrows(ResponseStatusException.class, () ->
                     leaveCreditService.importLeaveCredits(file));
 
-            assertEquals(HttpStatus.BAD_REQUEST, ex.getStatus());
+            assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
             assertTrue(ex.getMessage().contains("Invalid leave type"));
         }
 
