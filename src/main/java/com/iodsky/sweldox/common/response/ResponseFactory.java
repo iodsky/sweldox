@@ -1,4 +1,4 @@
-package com.iodsky.sweldox.common;
+package com.iodsky.sweldox.common.response;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -18,7 +18,7 @@ public class ResponseFactory {
 
     public static <T> ResponseEntity<ApiResponse<T>> ok(String message, T data, PaginationMeta meta) {
 
-        ApiResponse<T> res = new ApiResponse<>(
+        PagedApiResponse<T> res = new PagedApiResponse<>(
                 true,
                 message,
                 data,

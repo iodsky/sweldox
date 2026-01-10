@@ -1,4 +1,4 @@
-package com.iodsky.sweldox.common;
+package com.iodsky.sweldox.common.response;
 
 import org.springframework.core.MethodParameter;
 import org.springframework.http.MediaType;

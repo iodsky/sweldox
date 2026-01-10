@@ -30,8 +30,9 @@ public class SecurityConfig {
             AuthenticationProvider authenticationProvider
     ) throws Exception {
         http.csrf(csrf -> csrf.disable())
+                .cors(cors -> cors.configure(http))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/auth/**", "/docs/**", "swagger-ui/**", "swagger-ui.html")
+                        .requestMatchers("/auth/**", "/docs/**", "/swagger-ui/**", "/swagger-ui.html/**")
                         .permitAll()
                         .anyRequest()
                         .authenticated())

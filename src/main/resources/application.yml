@@ -10,6 +10,13 @@ server:
   servlet:
     context-path: /api
 
+springdoc:
+  api-docs:
+    path: /docs
+  swagger-ui:
+    path: /swagger-ui.html
+  show-actuator: false
+
 security:
   jwt:
     secret-key: ${JWT_SECRET}

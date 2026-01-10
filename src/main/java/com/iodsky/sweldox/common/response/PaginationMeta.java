@@ -1,4 +1,4 @@
-package com.iodsky.sweldox.common;
+package com.iodsky.sweldox.common.response;
 
 import lombok.Builder;
 import lombok.Getter;

@@ -1,9 +1,12 @@
 package com.iodsky.sweldox.payroll;
 
-import com.iodsky.sweldox.common.ApiResponse;
-import com.iodsky.sweldox.common.BatchResponse;
-import com.iodsky.sweldox.common.PaginationMeta;
-import com.iodsky.sweldox.common.ResponseFactory;
+import com.iodsky.sweldox.common.response.ApiResponse;
+import com.iodsky.sweldox.common.response.BatchResponse;
+import com.iodsky.sweldox.common.response.PaginationMeta;
+import com.iodsky.sweldox.common.response.ResponseFactory;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +22,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/payroll")
 @RequiredArgsConstructor
+@Tag(name = "Payroll", description = "Payroll processing and management endpoints")
 public class PayrollController {
 
     private final PayrollService payrollService;
@@ -26,6 +30,7 @@ public class PayrollController {
 
     @PreAuthorize("hasRole('PAYROLL')")
     @PostMapping
+    @Operation(summary = "Create payroll", description = "Generate payroll for a single employee or batch process for all employees. Requires PAYROLL role.")
     public ResponseEntity<ApiResponse<Object>> createPayroll(
             @RequestBody PayrollRequest request)  {
 
@@ -49,11 +54,12 @@ public class PayrollController {
 
     @PreAuthorize("hasRole('PAYROLL')")
     @GetMapping
+    @Operation(summary = "Get all payroll records", description = "Retrieve all payroll records with pagination and optional date filtering. Requires PAYROLL role.")
     public ResponseEntity<ApiResponse<List<PayrollDto>>> getAllPayroll(
-            @RequestParam(defaultValue = "0") @Min(0) int pageNo,
-            @RequestParam(defaultValue = "10") @Min(1) @Max(100) int limit,
-            @RequestParam(required = false) LocalDate periodStartDate,
-            @RequestParam(required = false) LocalDate periodEndDate
+            @Parameter(description = "Page number (0-indexed)") @RequestParam(defaultValue = "0") @Min(0) int pageNo,
+            @Parameter(description = "Number of items per page (1-100)") @RequestParam(defaultValue = "10") @Min(1) @Max(100) int limit,
+            @Parameter(description = "Filter by period start date") @RequestParam(required = false) LocalDate periodStartDate,
+            @Parameter(description = "Filter by period end date") @RequestParam(required = false) LocalDate periodEndDate
     ) {
 
         Page<Payroll> page = payrollService.getAllPayroll(pageNo, limit, periodStartDate, periodEndDate);
@@ -64,11 +70,12 @@ public class PayrollController {
     }
 
     @GetMapping("/me")
+    @Operation(summary = "Get my payroll records", description = "Retrieve payroll records for the authenticated employee")
     public ResponseEntity<ApiResponse<List<PayrollDto>>> getAllEmployeePayroll(
-            @RequestParam(defaultValue = "0") @Min(0) int pageNo,
-            @RequestParam(defaultValue = "10") @Min(1) @Max(100) int limit,
-            @RequestParam(required = false) LocalDate periodStartDate,
-            @RequestParam(required = false) LocalDate periodEndDate
+            @Parameter(description = "Page number (0-indexed)") @RequestParam(defaultValue = "0") @Min(0) int pageNo,
+            @Parameter(description = "Number of items per page (1-100)") @RequestParam(defaultValue = "10") @Min(1) @Max(100) int limit,
+            @Parameter(description = "Filter by period start date") @RequestParam(required = false) LocalDate periodStartDate,
+            @Parameter(description = "Filter by period end date") @RequestParam(required = false) LocalDate periodEndDate
     ) {
         Page<Payroll> page = payrollService.getAllEmployeePayroll(pageNo, limit, periodStartDate, periodEndDate);
 
@@ -78,7 +85,8 @@ public class PayrollController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<PayrollDto>> getPayrollById(@PathVariable("id") UUID id) {
+    @Operation(summary = "Get payroll by ID", description = "Retrieve a specific payroll record by its ID")
+    public ResponseEntity<ApiResponse<PayrollDto>> getPayrollById(@Parameter(description = "Payroll ID") @PathVariable("id") UUID id) {
         PayrollDto dto = payrollMapper.toDto(payrollService.getPayrollById(id));
         return ResponseFactory.ok("Payroll retrieved successfully", dto);
     }

@@ -1,6 +1,6 @@
 package com.iodsky.sweldox.common.exception;
 
-import com.iodsky.sweldox.common.ErrorResponse;
+import com.iodsky.sweldox.common.response.ErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

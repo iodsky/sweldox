@@ -1,4 +1,4 @@
-package com.iodsky.sweldox.common;
+package com.iodsky.sweldox.common.response;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
@@ -29,7 +29,6 @@ public class ApiResponse<T> {
     private T data;
     private Instant timestamp;
     private String path;
-    private PaginationMeta meta;
 
     public ApiResponse(boolean success, String message, T data) {
         this.success = success;
@@ -37,10 +36,4 @@ public class ApiResponse<T> {
         this.data = data;
     }
 
-    public ApiResponse(boolean success, String message, T data, PaginationMeta meta) {
-        this.success = success;
-        this.message = message;
-        this.data = data;
-        this.meta = meta;
-    }
 }
