@@ -6,6 +6,7 @@ import lombok.Data;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 
 @Data
@@ -26,6 +27,8 @@ public class EmployeeDto {
     private String position;
     private String department;
     private String status;
+    private LocalTime startShift;
+    private LocalTime endShift;
     private BigDecimal basicSalary;
     private BigDecimal hourlyRate;
     private BigDecimal semiMonthlyRate;

@@ -2,6 +2,10 @@ spring:
   config:
     activate:
       on-profile: prod
+  flyway:
+    user: ${CLOUD_DB_USER}
+    password: ${CLOUD_DB_PASSWORD}
+
 
   datasource:
     url: jdbc:postgresql://${CLOUD_DB_HOST}:${CLOUD_DB_PORT}/${CLOUD_DB}
@@ -11,8 +15,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     properties:
       hibernate:
         format_sql: true
-    defer-datasource-initialization: true

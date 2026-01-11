@@ -1,7 +1,6 @@
 package com.iodsky.sweldox.attendance;
 
 
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PastOrPresent;
 import lombok.Builder;
 import lombok.Data;
@@ -17,7 +16,6 @@ public class AttendanceDto {
 
     private UUID id;
 
-    @NotNull
     private Long employeeId;
 
     @PastOrPresent

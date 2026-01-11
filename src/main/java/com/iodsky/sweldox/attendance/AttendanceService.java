@@ -27,10 +27,6 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class AttendanceService {
 
-    private final LocalTime START_SHIFT = LocalTime.of(8, 0);
-    private final LocalTime END_SHIFT = LocalTime.of(17, 0);
-    private final LocalTime EARLIEST_START_SHIFT = START_SHIFT.minusMinutes(15);
-
     private final AttendanceRepository attendanceRepository;
     private final EmployeeService employeeService;
     private final UserService userService;
@@ -67,10 +63,6 @@ public class AttendanceService {
                 ? attendanceDto.getTimeIn()
                 : LocalTime.now();
 
-        // Prevent early clock-in
-        if (clockInTime.isBefore(EARLIEST_START_SHIFT)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot clock in before " + EARLIEST_START_SHIFT);
-        }
 
         // Check for existing attendance record
         Optional<Attendance> exists = attendanceRepository.findByEmployee_IdAndDate(employeeId, attendanceDate);
@@ -140,11 +132,25 @@ public class AttendanceService {
         }
 
         if (attendance.getTimeIn() != null && attendance.getTimeOut() != null && !attendance.getTimeOut().equals(LocalTime.MIN)) {
-            Duration duration = Duration.between(attendance.getTimeIn(), attendance.getTimeOut());
-            BigDecimal totalHours = BigDecimal.valueOf(duration.toMinutes()).divide(BigDecimal.valueOf(60), 2, RoundingMode.HALF_UP);
+            Employee employee = attendance.getEmployee();
 
+            if (employee.getEmploymentDetails() == null
+                    || employee.getEmploymentDetails().getStartShift() == null
+                    || employee.getEmploymentDetails().getEndShift() == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Employee shift times are not configured. Cannot calculate hours.");
+            }
+
+            LocalTime employeeStartShift = employee.getEmploymentDetails().getStartShift();
+            LocalTime employeeEndShift = employee.getEmploymentDetails().getEndShift();
+
+            Duration duration = Duration.between(attendance.getTimeIn(), attendance.getTimeOut());
+            BigDecimal totalHours = BigDecimal.valueOf(duration.toMinutes())
+                    .divide(BigDecimal.valueOf(60), 2, RoundingMode.HALF_UP);
+
+            // Calculate regular hours based on employee's shift duration
             BigDecimal regularHours = BigDecimal
-                    .valueOf(Duration.between(START_SHIFT, END_SHIFT).toMinutes())
+                    .valueOf(Duration.between(employeeStartShift, employeeEndShift).toMinutes())
                     .divide(BigDecimal.valueOf(60), 2, RoundingMode.HALF_UP);
 
             BigDecimal overtime = totalHours.subtract(regularHours);

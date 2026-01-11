@@ -7,6 +7,7 @@ import com.iodsky.sweldox.organization.Position;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.LocalTime;
 import java.util.UUID;
 
 @Entity
@@ -41,4 +42,10 @@ public class EmploymentDetails extends BaseModel {
 
     @Enumerated(EnumType.STRING)
     private Status status;
+
+    @Column(nullable = false)
+    private LocalTime startShift;
+
+    @Column(nullable = false)
+    private LocalTime endShift;
 }

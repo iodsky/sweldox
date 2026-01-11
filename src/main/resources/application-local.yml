@@ -2,6 +2,9 @@ spring:
   config:
     activate:
       on-profile: local
+  flyway:
+    user: ${LOCAL_DB_USER}
+    password: ${LOCAL_DB_PASSWORD}
 
   datasource:
     url: jdbc:postgresql://${LOCAL_DB_HOST}:${LOCAL_DB_PORT}/${LOCAL_DB}
@@ -11,13 +14,8 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     properties:
       hibernate:
         format_sql: true
         show_sql: true
-    defer-datasource-initialization: true
-
-  sql:
-    init:
-      mode: always

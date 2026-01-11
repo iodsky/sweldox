@@ -4,6 +4,7 @@ import com.iodsky.sweldox.common.DateRange;
 import com.iodsky.sweldox.common.DateRangeResolver;
 import com.iodsky.sweldox.employee.EmployeeService;
 import com.iodsky.sweldox.employee.Employee;
+import com.iodsky.sweldox.employee.EmploymentDetails;
 import com.iodsky.sweldox.security.user.User;
 import com.iodsky.sweldox.security.user.UserRole;
 import com.iodsky.sweldox.security.user.UserService;
@@ -41,17 +42,38 @@ class AttendanceServiceTest {
     private Employee otherEmployee;
     private AttendanceDto dto;
     private Attendance attendance;
+    private EmploymentDetails standardEmploymentDetails;
+    private EmploymentDetails partTimeEmploymentDetails;
 
     private static final LocalDate TODAY = LocalDate.of(2025, 11, 1);
     private static final LocalTime SHIFT_START = LocalTime.of(8, 0);
-    private static final LocalTime EARLIEST_SHIFT = SHIFT_START.minusMinutes(15);
+    private static final LocalTime SHIFT_END = LocalTime.of(17, 0);
+    private static final LocalTime PART_TIME_START = LocalTime.of(9, 0);
+    private static final LocalTime PART_TIME_END = LocalTime.of(13, 0);
 
     @BeforeEach
     void setUp() {
+        // Setup standard 9-hour shift employment details
+        standardEmploymentDetails = EmploymentDetails.builder()
+                .startShift(SHIFT_START)
+                .endShift(SHIFT_END)
+                .build();
+
+        // Setup part-time 4-hour shift employment details
+        partTimeEmploymentDetails = EmploymentDetails.builder()
+                .startShift(PART_TIME_START)
+                .endShift(PART_TIME_END)
+                .build();
+
         currentEmployee = new Employee();
         currentEmployee.setId(1L);
+        currentEmployee.setEmploymentDetails(standardEmploymentDetails);
+        standardEmploymentDetails.setEmployee(currentEmployee);
+
         otherEmployee = new Employee();
         otherEmployee.setId(2L);
+        otherEmployee.setEmploymentDetails(partTimeEmploymentDetails);
+        partTimeEmploymentDetails.setEmployee(otherEmployee);
 
         hrUser = new User();
         hrUser.setUserRole(new UserRole("HR"));
@@ -132,14 +154,17 @@ class AttendanceServiceTest {
         }
 
         @Test
-        void shouldThrowBadRequestWhenClockInTooEarly() {
+        void shouldAllowClockInAtAnyTime() {
             when(userService.getAuthenticatedUser()).thenReturn(normalUser);
-            dto.setTimeIn(EARLIEST_SHIFT.minusMinutes(1)); // too early
+            dto.setTimeIn(LocalTime.of(3, 0));
+            when(attendanceRepository.findByEmployee_IdAndDate(anyLong(), any())).thenReturn(Optional.empty());
+            when(employeeService.getEmployeeById(anyLong())).thenReturn(currentEmployee);
+            when(attendanceRepository.save(any())).thenReturn(attendance);
 
-            ResponseStatusException ex = assertThrows(ResponseStatusException.class,
-                    () -> attendanceService.createAttendance(dto));
+            Attendance result = attendanceService.createAttendance(dto);
 
-            assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+            assertNotNull(result);
+            verify(attendanceRepository).save(any(Attendance.class));
         }
 
         @Test
@@ -276,6 +301,118 @@ class AttendanceServiceTest {
                     () -> attendanceService.updateAttendance(UUID.randomUUID(), dto));
 
             assertEquals(HttpStatus.NOT_FOUND, ex.getStatusCode());
+        }
+
+        @Test
+        void shouldCalculateOvertimeBasedOnEmployeeShift() {
+            when(userService.getAuthenticatedUser()).thenReturn(normalUser);
+            Attendance existing = Attendance.builder()
+                    .id(UUID.randomUUID())
+                    .employee(currentEmployee)
+                    .date(TODAY)
+                    .timeIn(SHIFT_START)
+                    .timeOut(LocalTime.MIN)
+                    .build();
+
+            // Clock out at 19:00 (11 hours worked, 9-hour shift = 2 hours overtime)
+            LocalTime clockOutTime = LocalTime.of(19, 0);
+
+            when(attendanceRepository.findById(any(UUID.class))).thenReturn(Optional.of(existing));
+            when(attendanceRepository.save(any())).thenReturn(existing);
+
+            try (MockedStatic<LocalTime> mocked = mockStatic(LocalTime.class, CALLS_REAL_METHODS)) {
+                mocked.when(LocalTime::now).thenReturn(clockOutTime);
+                Attendance result = attendanceService.updateAttendance(existing.getId(), null);
+
+                assertEquals(clockOutTime, result.getTimeOut());
+                assertEquals(new BigDecimal("11.00"), result.getTotalHours());
+                assertEquals(new BigDecimal("2.00"), result.getOvertime());
+            }
+        }
+
+        @Test
+        void shouldCalculateNoOvertimeWhenWorkingLessThanShiftHours() {
+            when(userService.getAuthenticatedUser()).thenReturn(normalUser);
+            Attendance existing = Attendance.builder()
+                    .id(UUID.randomUUID())
+                    .employee(currentEmployee)
+                    .date(TODAY)
+                    .timeIn(SHIFT_START) // 08:00
+                    .timeOut(LocalTime.MIN)
+                    .build();
+
+            // Clock out at 15:00 (7 hours worked, 9-hour shift = 0 overtime)
+            LocalTime clockOutTime = LocalTime.of(15, 0);
+
+            when(attendanceRepository.findById(any(UUID.class))).thenReturn(Optional.of(existing));
+            when(attendanceRepository.save(any())).thenReturn(existing);
+
+            try (MockedStatic<LocalTime> mocked = mockStatic(LocalTime.class, CALLS_REAL_METHODS)) {
+                mocked.when(LocalTime::now).thenReturn(clockOutTime);
+                Attendance result = attendanceService.updateAttendance(existing.getId(), null);
+
+                assertEquals(new BigDecimal("7.00"), result.getTotalHours());
+                assertEquals(0, result.getOvertime().compareTo(BigDecimal.ZERO));
+            }
+        }
+
+        @Test
+        void shouldCalculateOvertimeForPartTimeEmployee() {
+            when(userService.getAuthenticatedUser()).thenReturn(normalUser);
+            normalUser.setEmployee(otherEmployee); // Part-time employee with 4-hour shift
+
+            Attendance existing = Attendance.builder()
+                    .id(UUID.randomUUID())
+                    .employee(otherEmployee)
+                    .date(TODAY)
+                    .timeIn(PART_TIME_START) // 09:00
+                    .timeOut(LocalTime.MIN)
+                    .build();
+
+            // Clock out at 15:00 (6 hours worked, 4-hour shift = 2 hours overtime)
+            LocalTime clockOutTime = LocalTime.of(15, 0);
+
+            when(attendanceRepository.findById(any(UUID.class))).thenReturn(Optional.of(existing));
+            when(attendanceRepository.save(any())).thenReturn(existing);
+
+            try (MockedStatic<LocalTime> mocked = mockStatic(LocalTime.class, CALLS_REAL_METHODS)) {
+                mocked.when(LocalTime::now).thenReturn(clockOutTime);
+                Attendance result = attendanceService.updateAttendance(existing.getId(), null);
+
+                assertEquals(new BigDecimal("6.00"), result.getTotalHours());
+                assertEquals(new BigDecimal("2.00"), result.getOvertime());
+            }
+        }
+
+        @Test
+        void shouldThrowBadRequestWhenEmployeeHasNoShiftConfiguration() {
+            when(userService.getAuthenticatedUser()).thenReturn(normalUser);
+            Employee employeeWithoutShift = new Employee();
+            employeeWithoutShift.setId(3L);
+            employeeWithoutShift.setEmploymentDetails(null);
+
+            Attendance existing = Attendance.builder()
+                    .id(UUID.randomUUID())
+                    .employee(employeeWithoutShift)
+                    .date(TODAY)
+                    .timeIn(SHIFT_START)
+                    .timeOut(LocalTime.MIN)
+                    .build();
+
+            LocalTime clockOutTime = LocalTime.of(17, 0);
+            normalUser.setEmployee(employeeWithoutShift);
+
+            when(attendanceRepository.findById(any(UUID.class))).thenReturn(Optional.of(existing));
+
+            try (MockedStatic<LocalTime> mocked = mockStatic(LocalTime.class, CALLS_REAL_METHODS)) {
+                mocked.when(LocalTime::now).thenReturn(clockOutTime);
+
+                ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                        () -> attendanceService.updateAttendance(existing.getId(), null));
+
+                assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+                assertTrue(ex.getReason().contains("shift times are not configured"));
+            }
         }
     }
 

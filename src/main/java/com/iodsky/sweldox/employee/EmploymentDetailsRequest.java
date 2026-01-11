@@ -3,6 +3,8 @@ package com.iodsky.sweldox.employee;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
+import java.time.LocalTime;
+
 @Data
 public class EmploymentDetailsRequest {
 
@@ -16,4 +18,10 @@ public class EmploymentDetailsRequest {
 
     @NotNull(message = "Status is required")
     private Status status;
+
+    @NotNull(message = "Start shift is required")
+    private LocalTime startShift;
+
+    @NotNull(message = "End shift is required")
+    private LocalTime endShift;
 }

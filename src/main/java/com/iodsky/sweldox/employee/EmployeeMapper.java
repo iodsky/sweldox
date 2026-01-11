@@ -41,6 +41,8 @@ public class EmployeeMapper implements CsvMapper<Employee, EmployeeCsvRecord> {
                 .supervisor(supervisorName)
                 .department(employee.getEmploymentDetails().getDepartment().getTitle())
                 .position(employee.getEmploymentDetails().getPosition().getTitle())
+                .startShift(employee.getEmploymentDetails().getStartShift())
+                .endShift(employee.getEmploymentDetails().getEndShift())
                 .basicSalary(employee.getCompensation().getBasicSalary())
                 .hourlyRate(employee.getCompensation().getHourlyRate())
                 .semiMonthlyRate(employee.getCompensation().getSemiMonthlyRate())
