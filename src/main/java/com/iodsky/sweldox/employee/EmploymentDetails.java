@@ -43,9 +43,7 @@ public class EmploymentDetails extends BaseModel {
     @Enumerated(EnumType.STRING)
     private Status status;
 
-    @Column(nullable = false)
     private LocalTime startShift;
 
-    @Column(nullable = false)
     private LocalTime endShift;
 }

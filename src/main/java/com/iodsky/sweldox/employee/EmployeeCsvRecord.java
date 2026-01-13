@@ -1,11 +1,13 @@
 package com.iodsky.sweldox.employee;
 
 import com.iodsky.sweldox.csvimport.LocalDateCsvConverter;
+import com.iodsky.sweldox.csvimport.LocalTimeCsvConverter;
 import com.opencsv.bean.CsvBindByName;
 import com.opencsv.bean.CsvCustomBindByName;
 import lombok.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalTime;
 
 @Getter
 @Setter
@@ -20,8 +22,7 @@ public class EmployeeCsvRecord {
     @CsvBindByName(column = "First Name")
     private String firstName;
 
-    @CsvBindByName(column = "Birthday")
-    @CsvCustomBindByName(converter = LocalDateCsvConverter.class)
+    @CsvCustomBindByName(column = "Birthday", converter = LocalDateCsvConverter.class)
     private LocalDate birthday;
 
     @CsvBindByName(column = "Address")
@@ -68,5 +69,11 @@ public class EmployeeCsvRecord {
 
     @CsvBindByName(column = "Hourly Rate")
     private BigDecimal hourlyRate;
+
+    @CsvCustomBindByName(column = "Start Shift", converter = LocalTimeCsvConverter.class)
+    private LocalTime startShift;
+
+    @CsvCustomBindByName(column = "End Shift", converter = LocalTimeCsvConverter.class)
+    private LocalTime endShift;
 
 }

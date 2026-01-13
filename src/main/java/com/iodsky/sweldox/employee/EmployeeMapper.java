@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalTime;
 import java.util.List;
 
 @Component
@@ -167,9 +168,14 @@ public class EmployeeMapper implements CsvMapper<Employee, EmployeeCsvRecord> {
                 .build();
         employee.setGovernmentId(governmentId);
 
+        LocalTime startShift = csv.getStartShift() == null ? LocalTime.of(8, 0) : csv.getStartShift();
+        LocalTime endShift = csv.getEndShift() == null ? LocalTime.of(17, 0) : csv.getEndShift();
+
         EmploymentDetails employmentDetails = EmploymentDetails.builder()
                 .employee(employee)
                 .status(Status.valueOf(csv.getStatus().toUpperCase()))
+                .startShift(startShift)
+                .endShift(endShift)
                 .build();
         employee.setEmploymentDetails(employmentDetails);
 
