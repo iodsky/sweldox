@@ -134,15 +134,14 @@ public class AttendanceService {
         if (attendance.getTimeIn() != null && attendance.getTimeOut() != null && !attendance.getTimeOut().equals(LocalTime.MIN)) {
             Employee employee = attendance.getEmployee();
 
-            if (employee.getEmploymentDetails() == null
-                    || employee.getEmploymentDetails().getStartShift() == null
-                    || employee.getEmploymentDetails().getEndShift() == null) {
+            if ( employee.getStartShift() == null
+                    || employee.getEndShift() == null) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                         "Employee shift times are not configured. Cannot calculate hours.");
             }
 
-            LocalTime employeeStartShift = employee.getEmploymentDetails().getStartShift();
-            LocalTime employeeEndShift = employee.getEmploymentDetails().getEndShift();
+            LocalTime employeeStartShift = employee.getStartShift();
+            LocalTime employeeEndShift = employee.getEndShift();
 
             Duration duration = Duration.between(attendance.getTimeIn(), attendance.getTimeOut());
             BigDecimal totalHours = BigDecimal.valueOf(duration.toMinutes())
