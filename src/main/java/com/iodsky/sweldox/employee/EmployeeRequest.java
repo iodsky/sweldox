@@ -1,10 +1,14 @@
 package com.iodsky.sweldox.employee;
 
+import com.iodsky.sweldox.payroll.BenefitDto;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import lombok.Data;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.List;
 
 @Data
 public class EmployeeRequest {
@@ -32,12 +36,36 @@ public class EmployeeRequest {
     @Valid
     private GovernmentIdRequest governmentId;
 
-    @NotNull(message = "Employment details are required")
-    @Valid
-    private EmploymentDetailsRequest employmentDetails;
+//    @NotNull(message = "Employment details are required")
+//    @Valid
+//    private EmploymentDetailsRequest employmentDetails;
 
-    @NotNull(message = "Compensation details are required")
-    @Valid
-    private CompensationRequest compensation;
+    private Long supervisorId;
+
+    @NotNull(message = "Position is required")
+    private String positionId;
+
+    @NotNull(message = "Department is required")
+    private String departmentId;
+
+    @NotNull(message = "Status is required")
+    private Status status;
+
+    @NotNull(message = "Start shift is required")
+    private LocalTime startShift;
+
+    @NotNull(message = "End shift is required")
+    private LocalTime endShift;
+
+//    @NotNull(message = "Compensation details are required")
+//    @Valid
+//    private CompensationRequest compensation;
+
+    @NotNull
+    @Positive
+    private BigDecimal basicSalary;
+
+    @NotNull
+    private List<BenefitDto> benefits;
 
 }
