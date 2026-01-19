@@ -55,21 +55,15 @@ class EmployeeServiceTest {
         position.setId("POS001");
 
         employee = new Employee();
-        EmploymentDetails details = new EmploymentDetails();
-        employee.setEmploymentDetails(details);
 
-        Compensation compensation = new Compensation();
-        compensation.setBenefits(new ArrayList<>());
-        employee.setCompensation(compensation);
+        employee.setBenefits(new ArrayList<>());
 
         GovernmentId governmentId = new GovernmentId();
         employee.setGovernmentId(governmentId);
 
         request = new EmployeeRequest();
-        EmploymentDetailsRequest reqDetails = new EmploymentDetailsRequest();
-        reqDetails.setDepartmentId("DEP001");
-        reqDetails.setPositionId("POS001");
-        request.setEmploymentDetails(reqDetails);
+        request.setDepartmentId("DEP001");
+        request.setPositionId("POS001");
     }
 
     @Nested
@@ -85,7 +79,7 @@ class EmployeeServiceTest {
 
             assertNotNull(result);
             verify(employeeRepository).save(employee);
-            assertEquals(department, result.getEmploymentDetails().getDepartment());
+            assertEquals(department, result.getDepartment());
         }
 
         @Test
@@ -95,11 +89,11 @@ class EmployeeServiceTest {
             when(positionService.getPositionById("POS001")).thenReturn(position);
             when(employeeRepository.save(any(Employee.class))).thenReturn(employee);
 
-            request.getEmploymentDetails().setSupervisorId(null);
+            request.setSupervisorId(null);
 
             Employee result = employeeService.createEmployee(request);
 
-            assertNull(result.getEmploymentDetails().getSupervisor());
+            assertNull(result.getSupervisor());
         }
 
         @Test
