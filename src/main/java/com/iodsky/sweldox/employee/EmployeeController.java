@@ -82,9 +82,9 @@ public class EmployeeController {
         return ResponseFactory.ok("Employee retrieved successfully", employee);
     }
 
-    @PreAuthorize("hasRole('HR')")
+    @PreAuthorize("hasAnyRole('HR', 'IT', 'PAYROLL')")
     @GetMapping("/{id}")
-    @Operation(summary = "Get employee by ID", description = "Retrieve a specific employee by their ID. Requires HR role.")
+    @Operation(summary = "Get employee by ID", description = "Retrieve a specific employee by their ID. Requires HR, IT, or PAYROLL role.")
     public ResponseEntity<ApiResponse<EmployeeDto>> getEmployeeById(@Parameter(description = "Employee ID") @PathVariable long id) {
         EmployeeDto employee = employeeMapper.toDto(employeeService.getEmployeeById(id));
         return ResponseFactory.ok("Employee retrieved successfully", employee);
