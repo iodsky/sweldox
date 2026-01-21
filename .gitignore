@@ -9,3 +9,5 @@
 
 # Environment
 *.env
+# Uploaded CSV files
+uploads/*.csv
