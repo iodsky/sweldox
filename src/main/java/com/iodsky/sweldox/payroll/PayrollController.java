@@ -1,7 +1,6 @@
 package com.iodsky.sweldox.payroll;
 
 import com.iodsky.sweldox.common.response.ApiResponse;
-import com.iodsky.sweldox.common.response.BatchResponse;
 import com.iodsky.sweldox.common.response.PaginationMeta;
 import com.iodsky.sweldox.common.response.ResponseFactory;
 import io.swagger.v3.oas.annotations.Operation;
@@ -30,19 +29,8 @@ public class PayrollController {
 
     @PreAuthorize("hasRole('PAYROLL')")
     @PostMapping
-    @Operation(summary = "Create payroll", description = "Generate payroll for a single employee or batch process for all employees. Requires PAYROLL role.")
-    public ResponseEntity<ApiResponse<Object>> createPayroll(
-            @RequestBody PayrollRequest request)  {
-
-        if (request.getEmployeeId() == null) {
-            Integer created = payrollService.createPayrollBatch(
-                    request.getPeriodStartDate(),
-                    request.getPeriodEndDate(),
-                    request.getPayDate());
-
-            return ResponseFactory.ok("Batch payroll created successfully", new BatchResponse(created));
-        }
-
+    @Operation(summary = "Create payroll", description = "Generate payroll for a single employee. Requires PAYROLL role.")
+    public ResponseEntity<ApiResponse<PayrollDto>> createPayroll(@RequestBody PayrollRequest request) {
         PayrollDto payroll = payrollMapper.toDto(payrollService.createPayroll(
                 request.getEmployeeId(),
                 request.getPeriodStartDate(),
