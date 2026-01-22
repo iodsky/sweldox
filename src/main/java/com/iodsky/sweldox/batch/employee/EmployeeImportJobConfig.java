@@ -1,7 +1,7 @@
-package com.iodsky.sweldox.batch.user;
+package com.iodsky.sweldox.batch.employee;
 
 import com.iodsky.sweldox.batch.ImportJobExecutionListener;
-import com.iodsky.sweldox.security.user.User;
+import com.iodsky.sweldox.employee.Employee;
 import jakarta.persistence.EntityManagerFactory;
 import lombok.RequiredArgsConstructor;
 import org.springframework.batch.core.Job;
@@ -28,53 +28,53 @@ import java.nio.file.Paths;
 
 @Configuration
 @RequiredArgsConstructor
-public class UserImportConfig {
+public class EmployeeImportJobConfig {
 
-    private final UserImportProcessor userImportProcessor;
-    private final UserImportSkipListener skipListener;
-    private final ImportJobExecutionListener jobCompletetionListener;
+    private final EmployeeImportProcessor employeeCsvRowProcessor;
+    private final EmployeeImportSkipListener skipListener;
+    private final ImportJobExecutionListener jobCompletionListener;
 
     @Value("${batch.upload.directory}")
     private String uploadDirectory;
 
     @Bean
     @StepScope
-    public FlatFileItemReader<UserImportRecord> userCsvReader(
+    public FlatFileItemReader<EmployeeImportRecord> employeeCsvReader(
             @Value("#{jobParameters['fileName']}") String fileName) {
-        return new FlatFileItemReaderBuilder<UserImportRecord>()
+        return new FlatFileItemReaderBuilder<EmployeeImportRecord>()
                 .linesToSkip(1)
-                .name("userCsvReader")
+                .name("employeeCsvItemReader")
                 .resource(new FileSystemResource(Paths.get(uploadDirectory, fileName).toFile()))
                 .delimited()
                 .delimiter(",")
-                .names(UserImportRecord.CSV_COLUMN_NAMES)
-                .targetType(UserImportRecord.class)
+                .names(EmployeeImportRecord.CSV_COLUMN_NAMES)
+                .targetType(EmployeeImportRecord.class)
                 .build();
     }
 
     @Bean
-    public ItemProcessor<UserImportRecord, User> userProcessor() {
-        return userImportProcessor;
+    public ItemProcessor<EmployeeImportRecord, Employee> employeeProcessor() {
+        return employeeCsvRowProcessor;
     }
 
     @Bean
-    public JpaItemWriter<User> userWritier(EntityManagerFactory entityManagerFactory) {
-        return new JpaItemWriterBuilder<User>()
+    public JpaItemWriter<Employee> employeeWriter(EntityManagerFactory entityManagerFactory) {
+        return new JpaItemWriterBuilder<Employee>()
                 .entityManagerFactory(entityManagerFactory)
                 .build();
     }
 
     @Bean
-    public Step userImportStep(ItemReader<UserImportRecord> userCsvReader,
-                                   ItemProcessor<UserImportRecord, User> userProcessor,
-                                   JpaItemWriter<User> userWriter,
+    public Step employeeImportStep(ItemReader<EmployeeImportRecord> employeeCsvReader,
+                                   ItemProcessor<EmployeeImportRecord, Employee> employeeProcessor,
+                                   JpaItemWriter<Employee> employeeWriter,
                                    JobRepository jobRepository,
                                    PlatformTransactionManager transactionManager) {
-        return new StepBuilder("importUsersStep", jobRepository)
-                .<UserImportRecord, User>chunk(10, transactionManager)
-                .reader(userCsvReader)
-                .processor(userProcessor)
-                .writer(userWriter)
+        return new StepBuilder("importEmployeesStep", jobRepository)
+                .<EmployeeImportRecord, Employee>chunk(10, transactionManager)
+                .reader(employeeCsvReader)
+                .processor(employeeProcessor)
+                .writer(employeeWriter)
                 .faultTolerant()
                 .skip(DataIntegrityViolationException.class)
                 .skipLimit(100)
@@ -84,11 +84,11 @@ public class UserImportConfig {
     }
 
     @Bean
-    public Job userImportJob(Step userImportStep, JobRepository jobRepository) {
-        return new JobBuilder("importUsersJob", jobRepository)
+    public Job employeeImportJob(Step employeeImportStep, JobRepository jobRepository) {
+        return new JobBuilder("importEmployeesJob", jobRepository)
                 .incrementer(new RunIdIncrementer())
-                .start(userImportStep)
-                .listener(jobCompletetionListener)
+                .listener(jobCompletionListener)
+                .start(employeeImportStep)
                 .build();
     }
 
