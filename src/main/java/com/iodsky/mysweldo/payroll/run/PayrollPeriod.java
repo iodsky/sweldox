@@ -48,8 +48,6 @@ public class PayrollPeriod {
     private static void validateDuration(PayrollFrequency frequency, long days) {
         long min, max;
         switch (frequency) {
-            case WEEKLY      -> { min = 7;  max = 7;  }
-            case BI_WEEKLY   -> { min = 14; max = 14; }
             case SEMI_MONTHLY -> { min = 13; max = 16; }
             case MONTHLY     -> { min = 27; max = 31; }
             default -> throw new IllegalArgumentException("Unsupported frequency: " + frequency);
@@ -66,8 +64,6 @@ public class PayrollPeriod {
         return switch (frequency) {
             case SEMI_MONTHLY -> 24;
             case MONTHLY      -> 12;
-            case WEEKLY       -> 52;
-            case BI_WEEKLY    -> 26;
         };
     }
 

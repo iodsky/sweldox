@@ -40,20 +40,6 @@ class PayrollPeriodTest {
                     PayrollPeriod.of(LocalDate.of(2025, 1, 1), LocalDate.of(2025, 1, 31), PayrollFrequency.MONTHLY)
             );
         }
-
-        @Test
-        void weekly() {
-            assertThatNoException().isThrownBy(() ->
-                    PayrollPeriod.of(LocalDate.of(2025, 3, 3), LocalDate.of(2025, 3, 9), PayrollFrequency.WEEKLY)
-            );
-        }
-
-        @Test
-        void biWeekly() {
-            assertThatNoException().isThrownBy(() ->
-                    PayrollPeriod.of(LocalDate.of(2025, 3, 3), LocalDate.of(2025, 3, 16), PayrollFrequency.BI_WEEKLY)
-            );
-        }
     }
 
     @Nested
@@ -75,13 +61,6 @@ class PayrollPeriodTest {
         }
 
         @Test
-        void biWeeklyWithWrongSpan() {
-            assertThatThrownBy(() ->
-                    PayrollPeriod.of(LocalDate.of(2025, 3, 1), LocalDate.of(2025, 3, 16), PayrollFrequency.BI_WEEKLY)
-            ).isInstanceOf(IllegalArgumentException.class);
-        }
-
-        @Test
         void nullFrequency() {
             assertThatThrownBy(() ->
                     PayrollPeriod.of(LocalDate.of(2025, 3, 1), LocalDate.of(2025, 3, 15), null)
@@ -96,8 +75,6 @@ class PayrollPeriodTest {
         void periodsPerYear() {
             assertThat(period(PayrollFrequency.SEMI_MONTHLY).periodsPerYear()).isEqualTo(24);
             assertThat(period(PayrollFrequency.MONTHLY).periodsPerYear()).isEqualTo(12);
-            assertThat(period(PayrollFrequency.WEEKLY).periodsPerYear()).isEqualTo(52);
-            assertThat(period(PayrollFrequency.BI_WEEKLY).periodsPerYear()).isEqualTo(26);
         }
 
         @Test
@@ -118,8 +95,6 @@ class PayrollPeriodTest {
             return switch (frequency) {
                 case SEMI_MONTHLY -> PayrollPeriod.of(LocalDate.of(2025, 3, 1), LocalDate.of(2025, 3, 15), frequency);
                 case MONTHLY      -> PayrollPeriod.of(LocalDate.of(2025, 3, 1), LocalDate.of(2025, 3, 31), frequency);
-                case WEEKLY       -> PayrollPeriod.of(LocalDate.of(2025, 3, 3), LocalDate.of(2025, 3, 9), frequency);
-                case BI_WEEKLY    -> PayrollPeriod.of(LocalDate.of(2025, 3, 3), LocalDate.of(2025, 3, 16), frequency);
             };
         }
     }
