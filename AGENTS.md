@@ -48,7 +48,7 @@ Domains: `attendance`, `benefit`, `contribution`, `deduction`, `department`, `em
 ### Payroll engine (`payroll/`)
 
 Non-trivial; split into four sub-packages with distinct responsibilities:
-- `payroll/calc` — `PayrollCalculator` (@Component) + `PayrollItemAssembler` compose statutory deductions/contributions and line items; also `StatutoryRateSnapshot`/`StatutorySchedulePolicy`.
+- `payroll/calc` — `PayrollCalculator` (@Component) + `PayrollItemAssembler` compose statutory deductions/contributions and line items; also `StatutoryRateSnapshot`.
 - `payroll/strategy` — pay-basis strategies (`PayBasisStrategyFactory` selects hourly/daily/monthly) and `StandardPayrollComputationStrategy`. Add a new pay type here.
 - `payroll/item` — payroll line items: `PayrollItem`, `PayrollBenefit`, `PayrollDeduction`, `EmployerContribution` entities + service/controller/mapper.
 - `payroll/run` — `PayrollRunService` orchestrates full payroll runs across active employees. Run creation is serialized with a PostgreSQL advisory lock (`pg_advisory_xact_lock` via `PayrollRunRepository.acquireRunCreationLock`) so the REGULAR overlap check + insert is atomic; overlapping REGULAR runs return `409 CONFLICT`.

@@ -93,12 +93,12 @@ class PayrollItemAssemblerTest {
 
         @Test
         void shouldThrowWhenEmployeeFrequencyDoesNotMatchRun() {
-            Employee employee = employeeWithFrequency(PayrollFrequency.WEEKLY);
+            Employee employee = employeeWithFrequency(PayrollFrequency.MONTHLY);
             when(employeeService.getEmployeeById(1L)).thenReturn(employee);
 
             assertThatThrownBy(() -> assembler.buildPayroll(1L, semiMonthlyRun, rates))
                     .isInstanceOf(PayrollRunException.class)
-                    .hasMessageContaining("WEEKLY")
+                    .hasMessageContaining("MONTHLY")
                     .hasMessageContaining("SEMI_MONTHLY");
 
             verify(strategy, never()).compute(any(), any(), any());
@@ -146,12 +146,12 @@ class PayrollItemAssemblerTest {
                             PayrollFrequency.MONTHLY))
                     .build();
 
-            Employee employee = employeeWithFrequency(PayrollFrequency.BI_WEEKLY);
+            Employee employee = employeeWithFrequency(PayrollFrequency.SEMI_MONTHLY);
             when(employeeService.getEmployeeById(1L)).thenReturn(employee);
 
             assertThatThrownBy(() -> assembler.buildPayroll(1L, monthlyRun, rates))
                     .isInstanceOf(PayrollRunException.class)
-                    .hasMessageContaining("BI_WEEKLY")
+                    .hasMessageContaining("SEMI_MONTHLY")
                     .hasMessageContaining("MONTHLY");
         }
     }

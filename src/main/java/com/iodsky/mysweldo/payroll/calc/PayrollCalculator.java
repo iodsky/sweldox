@@ -149,8 +149,6 @@ public class PayrollCalculator {
         return switch (frequency) {
             case SEMI_MONTHLY -> BigDecimal.valueOf(2);
             case MONTHLY -> BigDecimal.ONE;
-            case WEEKLY -> BigDecimal.valueOf(52).divide(BigDecimal.valueOf(12), 10, RoundingMode.HALF_UP);
-            case BI_WEEKLY -> BigDecimal.valueOf(26).divide(BigDecimal.valueOf(12), 10, RoundingMode.HALF_UP);
         };
     }
 

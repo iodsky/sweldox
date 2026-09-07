@@ -8,7 +8,6 @@ import com.iodsky.mysweldo.employee.PayType;
 import com.iodsky.mysweldo.payroll.calc.PayrollCalculator;
 import com.iodsky.mysweldo.payroll.calc.PayrollComputationResult;
 import com.iodsky.mysweldo.payroll.calc.StatutoryRateSnapshot;
-import com.iodsky.mysweldo.payroll.calc.StatutorySchedulePolicy;
 import com.iodsky.mysweldo.payroll.run.PayrollFrequency;
 import com.iodsky.mysweldo.payroll.run.PayrollRun;
 import com.iodsky.mysweldo.payroll.PayrollRunException;
@@ -27,7 +26,6 @@ public class StandardPayrollComputationStrategy implements PayrollComputationStr
     private final OvertimeRequestService overtimeRequestService;
     private final PayrollCalculator payrollCalculator;
     private final PayBasisStrategyFactory payBasisStrategyFactory;
-    private final StatutorySchedulePolicy statutorySchedulePolicy;
 
     @Override
     public PayrollComputationResult compute(Employee employee, PayrollRun payrollRun, StatutoryRateSnapshot rates) {
@@ -90,15 +88,6 @@ public class StandardPayrollComputationStrategy implements PayrollComputationStr
         BigDecimal sssEr = payrollCalculator.calculateSssEmployerContribution(monthlyEquivalent, rates.getSssRateTable(), frequency);
         BigDecimal philhealthEr = payrollCalculator.calculatePhilhealthEmployerContribution(monthlyEquivalent, rates.getPhilhealthRateTable(), frequency);
         BigDecimal pagibigEr = payrollCalculator.calculatePagibigEmployerContribution(monthlyEquivalent, rates.getPagibigRateTable(), frequency);
-
-        if (!statutorySchedulePolicy.shouldCollectStatutory(employee.getId(), payrollRun)) {
-            sss = BigDecimal.ZERO;
-            philhealth = BigDecimal.ZERO;
-            pagibig = BigDecimal.ZERO;
-            sssEr = BigDecimal.ZERO;
-            philhealthEr = BigDecimal.ZERO;
-            pagibigEr = BigDecimal.ZERO;
-        }
 
         BigDecimal totalStatutoryDeductions = payrollCalculator.calculateTotalStatutoryDeductions(sss, philhealth, pagibig);
         BigDecimal totalEmployerContributions = payrollCalculator.calculateTotalEmployerContributions(sssEr, philhealthEr, pagibigEr);
